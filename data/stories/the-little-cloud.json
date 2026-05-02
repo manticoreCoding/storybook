@@ -1,0 +1,59 @@
+{
+  "id": "the-little-cloud",
+  "title": "The Little Cloud",
+  "coverImage": "https://picsum.photos/seed/cloud-cover/600/400",
+  "description": "A small cloud learns how to make rain for the very first time.",
+  "createdAt": "2026-04-29",
+  "pages": [
+    {
+      "pageNumber": 1,
+      "image": "https://picsum.photos/seed/cloud1/800/500",
+      "text": "High above the meadows and the treetops, there floated a tiny little cloud named Nimbus. He was the smallest cloud in the whole sky, and he had never made rain before."
+    },
+    {
+      "pageNumber": 2,
+      "image": "https://picsum.photos/seed/cloud2/800/500",
+      "text": "Every day, Nimbus watched the big grey clouds rumble and boom and pour down great curtains of rain. \"I want to do that too!\" he said. \"How do you make it rain?\""
+    },
+    {
+      "pageNumber": 3,
+      "image": "https://picsum.photos/seed/cloud3/800/500",
+      "text": "\"You have to feel it,\" said old Grandma Cumulus, puffing up grandly. \"Breathe in deep, hold the water tight inside you, and then... let go!\" She sent down a splendid shower on the hills."
+    },
+    {
+      "pageNumber": 4,
+      "image": "https://picsum.photos/seed/cloud4/800/500",
+      "text": "Nimbus tried and tried. He puffed out his cheeks and held his breath. He turned grey with effort. But only a tiny drizzle came out — barely enough to wet a daisy."
+    },
+    {
+      "pageNumber": 5,
+      "image": "https://picsum.photos/seed/cloud5/800/500",
+      "text": "One sunny afternoon, Nimbus drifted over a meadow where a family was having a picnic. There were sandwiches and lemonade and a big strawberry cake. Everyone was laughing."
+    },
+    {
+      "pageNumber": 6,
+      "image": "https://picsum.photos/seed/cloud6/800/500",
+      "text": "Nimbus breathed in the warm air rising from the meadow. He felt full — really full — for the very first time. His edges turned dark and fluffy. Something was building inside him."
+    },
+    {
+      "pageNumber": 7,
+      "image": "https://picsum.photos/seed/cloud7/800/500",
+      "text": "\"Oh!\" gasped Nimbus, and before he could stop himself — WHOOOOSH! — down came the most magnificent downpour he had ever made. Buckets and buckets of rain!"
+    },
+    {
+      "pageNumber": 8,
+      "image": "https://picsum.photos/seed/cloud8/800/500",
+      "text": "The picnic family squealed and grabbed their blanket. The sandwiches got soggy. The strawberry cake slid off the plate. The dog shook himself and splashed everyone."
+    },
+    {
+      "pageNumber": 9,
+      "image": "https://picsum.photos/seed/cloud9/800/500",
+      "text": "\"Oh no! I'm so sorry!\" cried Nimbus, turning very pink with embarrassment. But down below, something wonderful happened. The family started to laugh! They danced in the puddles and caught raindrops on their tongues."
+    },
+    {
+      "pageNumber": 10,
+      "image": "https://picsum.photos/seed/cloud10/800/500",
+      "text": "When the rain stopped, a beautiful rainbow stretched across the sky. The family cheered and pointed right up at Nimbus. He beamed the biggest, fluffiest cloud-smile you ever saw. From that day on, making rain was his favourite thing in the world."
+    }
+  ]
+}

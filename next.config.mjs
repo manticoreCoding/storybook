@@ -1,6 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  /* config options here */
+  images: {
+    remotePatterns: [
+      new URL('https://picsum.photos/**'),
+      new URL('https://*.public.blob.vercel-storage.com/**'),
+    ],
+  },
 };
 
 export default nextConfig;

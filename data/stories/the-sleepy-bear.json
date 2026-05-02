@@ -1,0 +1,59 @@
+{
+  "id": "the-sleepy-bear",
+  "title": "The Sleepy Bear",
+  "coverImage": "https://picsum.photos/seed/bear-cover/600/400",
+  "description": "A bear who can't find the perfect spot to hibernate.",
+  "createdAt": "2026-04-29",
+  "pages": [
+    {
+      "pageNumber": 1,
+      "image": "https://picsum.photos/seed/bear1/800/500",
+      "text": "Once upon a time, deep in a cozy forest, there lived a big brown bear named Bruno. Every autumn, when the leaves turned gold and red, Bruno would begin his search for the perfect sleeping spot."
+    },
+    {
+      "pageNumber": 2,
+      "image": "https://picsum.photos/seed/bear2/800/500",
+      "text": "Bruno wandered through the tall pine trees, his paws crunching softly on the fallen leaves. \"I need somewhere warm and snug,\" he said, sniffing the cool autumn air."
+    },
+    {
+      "pageNumber": 3,
+      "image": "https://picsum.photos/seed/bear3/800/500",
+      "text": "First, Bruno tried a hollow log near the river. He squeezed himself inside, but it was far too small! His big fluffy bottom stuck right out the end."
+    },
+    {
+      "pageNumber": 4,
+      "image": "https://picsum.photos/seed/bear4/800/500",
+      "text": "Next, he found a cozy cave at the foot of a mossy hill. But when he peeked inside, three squirrels had already made it their home, and they were NOT happy to see him."
+    },
+    {
+      "pageNumber": 5,
+      "image": "https://picsum.photos/seed/bear5/800/500",
+      "text": "Bruno tried sleeping under a big oak tree. The roots curved up like a cradle around him. But the wind was too chilly, and the rain started to drip right on his nose."
+    },
+    {
+      "pageNumber": 6,
+      "image": "https://picsum.photos/seed/bear6/800/500",
+      "text": "He climbed a gentle hill and found a pile of soft golden leaves. Bruno curled into a ball and sighed happily. But before he could drift off, a family of rabbits hopped right on top of him!"
+    },
+    {
+      "pageNumber": 7,
+      "image": "https://picsum.photos/seed/bear7/800/500",
+      "text": "By now the sky was turning pink and purple. Bruno sat down by a frozen pond and thought hard. His tummy was full of berries and honey. All he needed was the right spot."
+    },
+    {
+      "pageNumber": 8,
+      "image": "https://picsum.photos/seed/bear8/800/500",
+      "text": "Then Bruno noticed something he had walked right past all along — a wide, warm burrow tucked behind a waterfall of ivy. It smelled of pine needles and dry earth. Perfect."
+    },
+    {
+      "pageNumber": 9,
+      "image": "https://picsum.photos/seed/bear9/800/500",
+      "text": "Bruno padded inside and found a bed of soft moss and dried grass. He turned around three times, just as bears do, and curled up into the most comfortable ball."
+    },
+    {
+      "pageNumber": 10,
+      "image": "https://picsum.photos/seed/bear10/800/500",
+      "text": "Outside, the first snowflakes began to fall, dusting the forest in white. Inside his cozy burrow, Bruno smiled a sleepy smile and closed his eyes. He wouldn't wake up until spring. Goodnight, Bruno."
+    }
+  ]
+}
