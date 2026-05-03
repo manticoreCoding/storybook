@@ -1,22 +1,13 @@
 import LibraryGrid from '@/components/LibraryGrid';
-import fs from 'fs';
-import path from 'path';
+import { getAllStories } from '@/lib/stories';
 
-async function getStoriesLocal() {
-  const dir = path.join(process.cwd(), 'data', 'stories');
-  if (!fs.existsSync(dir)) return [];
-  const files = fs.readdirSync(dir).filter((f) => f.endsWith('.json'));
-  return files
-    .map((f) => JSON.parse(fs.readFileSync(path.join(dir, f), 'utf-8')))
-    .sort((a, b) => a.title.localeCompare(b.title));
-}
+export const dynamic = 'force-dynamic';
 
 export default async function LibraryPage() {
-  const stories = await getStoriesLocal();
+  const stories = await getAllStories();
 
   return (
     <main className="min-h-screen bg-cream">
-      {/* Header */}
       <header className="bg-white shadow-sm sticky top-0 z-10">
         <div className="max-w-5xl mx-auto px-4 md:px-8 py-4 flex items-center justify-between">
           <h1 className="font-lora text-2xl md:text-3xl font-bold text-brown-dark">

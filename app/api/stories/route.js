@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getAllStories, saveStory, seedIfEmpty } from '@/lib/stories';
+import { revalidatePath } from 'next/cache';
 
 export async function GET() {
   try {
@@ -20,6 +21,11 @@ export async function POST(request) {
       return NextResponse.json({ error: 'id and title are required' }, { status: 400 });
     }
     await saveStory(data);
+
+    // Invalidate cached pages so the updated story shows immediately
+    revalidatePath('/');
+    revalidatePath(`/story/${data.id}`);
+
     return NextResponse.json({ ok: true });
   } catch (err) {
     return NextResponse.json({ error: err.message }, { status: 500 });

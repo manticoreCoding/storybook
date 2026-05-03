@@ -1,23 +1,18 @@
 import StoryReader from '@/components/StoryReader';
-import fs from 'fs';
-import path from 'path';
+import { getStory } from '@/lib/stories';
 import { notFound } from 'next/navigation';
 
-function getStoryLocal(id) {
-  const filePath = path.join(process.cwd(), 'data', 'stories', `${id}.json`);
-  if (!fs.existsSync(filePath)) return null;
-  return JSON.parse(fs.readFileSync(filePath, 'utf-8'));
-}
+export const dynamic = 'force-dynamic';
 
 export async function generateMetadata({ params }) {
   const { id } = await params;
-  const story = getStoryLocal(id);
+  const story = await getStory(id);
   return { title: story ? story.title : 'Story Not Found' };
 }
 
 export default async function StoryPage({ params }) {
   const { id } = await params;
-  const story = getStoryLocal(id);
+  const story = await getStory(id);
   if (!story) notFound();
   return <StoryReader story={story} />;
 }
