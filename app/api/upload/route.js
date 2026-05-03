@@ -27,6 +27,7 @@ export async function POST(request) {
     const blob = await put(`images/${storyId}/${filename}`, file, {
       access: 'public',
       addRandomSuffix: false,
+      allowOverwrite: true,
     });
     return NextResponse.json({ url: blob.url });
   } catch (err) {
