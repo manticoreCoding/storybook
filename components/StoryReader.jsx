@@ -47,7 +47,12 @@ export default function StoryReader({ story }) {
         <h1 className="font-lora text-lg md:text-2xl font-bold text-brown-dark text-center leading-tight px-2 truncate">
           {story.title}
         </h1>
-        <div className="w-24 md:w-28" />
+        <Link
+          href={`/admin/edit/${story.id}`}
+          className="font-nunito text-sm text-brown-mid bg-amber-light rounded-full px-4 py-2 shadow-sm active:scale-95 transition-transform whitespace-nowrap"
+        >
+          ✏️ Edit
+        </Link>
       </div>
 
       {/* Page content — fills remaining height */}
