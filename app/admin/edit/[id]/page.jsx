@@ -1,23 +1,18 @@
 import StoryForm from '@/components/StoryForm';
 import { notFound } from 'next/navigation';
-import fs from 'fs';
-import path from 'path';
+import { getStory } from '@/lib/stories';
 
-function getStoryLocal(id) {
-  const filePath = path.join(process.cwd(), 'data', 'stories', `${id}.json`);
-  if (!fs.existsSync(filePath)) return null;
-  return JSON.parse(fs.readFileSync(filePath, 'utf-8'));
-}
+export const dynamic = 'force-dynamic';
 
 export async function generateMetadata({ params }) {
   const { id } = await params;
-  const story = getStoryLocal(id);
+  const story = await getStory(id);
   return { title: story ? `Edit: ${story.title}` : 'Story Not Found' };
 }
 
 export default async function EditStoryPage({ params }) {
   const { id } = await params;
-  const story = getStoryLocal(id);
+  const story = await getStory(id);
   if (!story) notFound();
 
   return <StoryForm initialData={story} storyId={id} mode="edit" />;

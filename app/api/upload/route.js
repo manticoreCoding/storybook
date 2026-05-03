@@ -14,7 +14,7 @@ export async function POST(request) {
     }
 
     // ── Local dev: save to public/images/ and return a relative URL ──
-    if (!process.env.BLOB_READ_WRITE_TOKEN) {
+    if (process.env.NODE_ENV !== 'production') {
       const dir = path.join(process.cwd(), 'public', 'images', storyId);
       fs.mkdirSync(dir, { recursive: true });
       const buffer = Buffer.from(await file.arrayBuffer());
