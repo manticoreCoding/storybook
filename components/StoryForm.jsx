@@ -2,12 +2,22 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { resizeImage } from '@/lib/resizeImage';
+import ImagePicker from './ImagePicker';
+
+const MIN_PAGES = 3;
+const MAX_PAGES = 15;
+const DEFAULT_PAGES = 5;
 
 function slugify(title) {
   return title
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/(^-|-$)/g, '');
+}
+
+function clamp(n, min, max) {
+  return Math.max(min, Math.min(max, n));
 }
 
 /**
@@ -25,14 +35,17 @@ export default function StoryForm({ initialData = null, storyId = null, mode = '
   const [description, setDescription] = useState(initialData?.description ?? '');
   const [coverImage, setCoverImage] = useState(initialData?.coverImage ?? '');
 
-  const buildPages = (data) =>
-    Array.from({ length: 10 }, (_, i) => ({
+  const buildPages = (data, count) =>
+    Array.from({ length: count }, (_, i) => ({
       pageNumber: i + 1,
       image: data?.pages?.[i]?.image ?? '',
       text: data?.pages?.[i]?.text ?? '',
     }));
 
-  const [pages, setPages] = useState(() => buildPages(initialData));
+  const [numPages, setNumPages] = useState(() =>
+    clamp(initialData?.pages?.length ?? DEFAULT_PAGES, MIN_PAGES, MAX_PAGES)
+  );
+  const [pages, setPages] = useState(() => buildPages(initialData, numPages));
   const [uploading, setUploading] = useState({});
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -44,6 +57,32 @@ export default function StoryForm({ initialData = null, storyId = null, mode = '
     setPages((prev) => prev.map((p, i) => (i === index ? { ...p, [field]: value } : p)));
   }
 
+  function handleNumPagesChange(rawValue) {
+    const newCount = clamp(Number(rawValue), MIN_PAGES, MAX_PAGES);
+    if (newCount < pages.length) {
+      const removed = pages.slice(newCount);
+      const hasContent = removed.some((p) => p.text.trim() || p.image);
+      if (hasContent && !window.confirm(
+        `This removes ${removed.length} page(s) that already have content. Continue?`
+      )) {
+        return;
+      }
+    }
+    setNumPages(newCount);
+    setPages((prev) => {
+      if (newCount === prev.length) return prev;
+      if (newCount < prev.length) return prev.slice(0, newCount);
+      return [
+        ...prev,
+        ...Array.from({ length: newCount - prev.length }, (_, i) => ({
+          pageNumber: prev.length + i + 1,
+          image: '',
+          text: '',
+        })),
+      ];
+    });
+  }
+
   async function handleImageUpload(index, file) {
     if (!effectiveId) {
       setError('Please enter a story title before uploading images.');
@@ -52,11 +91,12 @@ export default function StoryForm({ initialData = null, storyId = null, mode = '
     setUploading((u) => ({ ...u, [index]: true }));
     setError('');
     try {
+      const resized = await resizeImage(file);
       const form = new FormData();
-      form.append('file', file);
+      form.append('file', resized);
       form.append('storyId', effectiveId);
       const label = index === -1 ? 'cover' : `page-${index + 1}`;
-      form.append('filename', `${label}-${file.name}`);
+      form.append('filename', `${label}-${resized.name}`);
       const res = await fetch('/api/upload', { method: 'POST', body: form });
       const data = await res.json();
       if (data.url) {
@@ -177,30 +217,41 @@ export default function StoryForm({ initialData = null, storyId = null, mode = '
           </div>
 
           <div>
-            <label className="admin-label">Cover Image</label>
-            {coverImage && (
-              <img
-                src={coverImage}
-                alt="Cover preview"
-                className="mb-2 h-32 rounded-xl object-cover shadow"
-              />
-            )}
+            <label className="admin-label">Number of Pages: {numPages}</label>
             <input
-              type="file"
-              accept="image/*"
-              className="admin-file"
-              onChange={(e) => e.target.files[0] && handleImageUpload(-1, e.target.files[0])}
+              type="range"
+              min={MIN_PAGES}
+              max={MAX_PAGES}
+              step={1}
+              value={numPages}
+              onChange={(e) => handleNumPagesChange(e.target.value)}
+              className="w-full"
             />
-            {uploading[-1] && <p className="text-xs text-brown-mid mt-1">Uploading…</p>}
             <p className="text-xs text-brown-mid mt-1">
-              {coverImage ? 'Upload a new file to replace the current image.' : 'Leave blank to use a placeholder image.'}
+              Choose between {MIN_PAGES} and {MAX_PAGES} pages.
             </p>
+          </div>
+
+          <div>
+            <label className="admin-label">Cover Image</label>
+            <ImagePicker
+              imageUrl={coverImage}
+              uploading={!!uploading[-1]}
+              aspect={3 / 2}
+              previewClassName="mb-2 h-32 rounded-xl object-cover shadow"
+              placeholderText={
+                coverImage
+                  ? 'Choose a new photo to replace the current image.'
+                  : 'Leave blank to use a placeholder image.'
+              }
+              onConfirm={(file) => handleImageUpload(-1, file)}
+            />
           </div>
         </section>
 
         {/* Pages */}
         <section className="space-y-4">
-          <h2 className="font-lora text-xl font-bold text-brown-dark px-1">Pages (10)</h2>
+          <h2 className="font-lora text-xl font-bold text-brown-dark px-1">Pages ({numPages})</h2>
           {pages.map((page, i) => (
             <div key={i} className="bg-white rounded-2xl shadow-sm p-5 space-y-3">
               <h3 className="font-lora font-bold text-brown-dark">Page {i + 1}</h3>
@@ -218,23 +269,18 @@ export default function StoryForm({ initialData = null, storyId = null, mode = '
 
               <div>
                 <label className="admin-label">Page Image</label>
-                {page.image && (
-                  <img
-                    src={page.image}
-                    alt={`Page ${i + 1} preview`}
-                    className="mb-2 h-24 rounded-xl object-cover shadow"
-                  />
-                )}
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="admin-file"
-                  onChange={(e) => e.target.files[0] && handleImageUpload(i, e.target.files[0])}
+                <ImagePicker
+                  imageUrl={page.image}
+                  uploading={!!uploading[i]}
+                  aspect={8 / 5}
+                  previewClassName="mb-2 h-24 rounded-xl object-cover shadow"
+                  placeholderText={
+                    page.image
+                      ? 'Choose a new photo to replace the current image.'
+                      : 'Leave blank to use a placeholder image.'
+                  }
+                  onConfirm={(file) => handleImageUpload(i, file)}
                 />
-                {uploading[i] && <p className="text-xs text-brown-mid mt-1">Uploading…</p>}
-                <p className="text-xs text-brown-mid mt-1">
-                  {page.image ? 'Upload a new file to replace the current image.' : 'Leave blank to use a placeholder image.'}
-                </p>
               </div>
             </div>
           ))}

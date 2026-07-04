@@ -2,21 +2,22 @@
 
 import { useState, useRef } from 'react';
 import Link from 'next/link';
+import CoverView from './CoverView';
 import PageView from './PageView';
 import NavControls from './NavControls';
 
 export default function StoryReader({ story }) {
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(0); // 0 = cover
   const touchStartX = useRef(null);
 
-  const page = story.pages[currentPage - 1];
   const total = story.pages.length;
+  const page = currentPage === 0 ? null : story.pages[currentPage - 1];
 
   function goNext() {
     if (currentPage < total) setCurrentPage((p) => p + 1);
   }
   function goPrev() {
-    if (currentPage > 1) setCurrentPage((p) => p - 1);
+    if (currentPage > 0) setCurrentPage((p) => p - 1);
   }
 
   function handleTouchStart(e) {
@@ -32,7 +33,7 @@ export default function StoryReader({ story }) {
 
   return (
     <div
-      className="flex flex-col h-screen bg-cream px-4 pt-4 pb-4 select-none"
+      className="flex flex-col h-dvh bg-cream px-4 pt-4 pb-4 select-none"
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
@@ -57,7 +58,7 @@ export default function StoryReader({ story }) {
 
       {/* Page content — fills remaining height */}
       <div className="flex-1 min-h-0">
-        <PageView page={page} />
+        {currentPage === 0 ? <CoverView story={story} /> : <PageView page={page} />}
       </div>
 
       {/* Navigation */}

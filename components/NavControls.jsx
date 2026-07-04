@@ -3,7 +3,7 @@ export default function NavControls({ current, total, onPrev, onNext }) {
     <div className="flex items-center justify-between gap-4 pt-3">
       <button
         onClick={onPrev}
-        disabled={current === 1}
+        disabled={current === 0}
         className="nav-btn"
         aria-label="Previous page"
       >
@@ -11,7 +11,7 @@ export default function NavControls({ current, total, onPrev, onNext }) {
       </button>
 
       <span className="font-nunito text-brown-mid text-base md:text-lg font-medium whitespace-nowrap">
-        Page {current} of {total}
+        {current === 0 ? 'Cover' : `Page ${current} of ${total}`}
       </span>
 
       <button

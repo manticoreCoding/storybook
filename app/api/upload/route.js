@@ -28,6 +28,7 @@ export async function POST(request) {
       access: 'public',
       addRandomSuffix: false,
       allowOverwrite: true,
+      cacheControlMaxAge: 60,
     });
     return NextResponse.json({ url: blob.url });
   } catch (err) {
