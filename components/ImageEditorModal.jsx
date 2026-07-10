@@ -4,6 +4,8 @@ import { useCallback, useState } from 'react';
 import Cropper from 'react-easy-crop';
 import { getCroppedImg } from '@/lib/cropImage';
 
+const MIN_ZOOM = 0.3;
+
 /**
  * Full-screen crop/rotate/zoom editor shown after a photo is picked or captured.
  */
@@ -22,7 +24,7 @@ export default function ImageEditorModal({ imageSrc, aspect, onCancel, onSave })
     if (!croppedAreaPixels) return;
     setProcessing(true);
     try {
-      const blob = await getCroppedImg(imageSrc, croppedAreaPixels, rotation);
+      const blob = await getCroppedImg(imageSrc, croppedAreaPixels, rotation, '#FDF6EC');
       onSave(blob);
     } finally {
       setProcessing(false);
@@ -38,6 +40,9 @@ export default function ImageEditorModal({ imageSrc, aspect, onCancel, onSave })
           zoom={zoom}
           rotation={rotation}
           aspect={aspect}
+          minZoom={MIN_ZOOM}
+          maxZoom={3}
+          restrictPosition={false}
           onCropChange={setCrop}
           onZoomChange={setZoom}
           onRotationChange={setRotation}
@@ -50,13 +55,16 @@ export default function ImageEditorModal({ imageSrc, aspect, onCancel, onSave })
           <label className="admin-label">Zoom</label>
           <input
             type="range"
-            min={1}
+            min={MIN_ZOOM}
             max={3}
             step={0.05}
             value={zoom}
             onChange={(e) => setZoom(Number(e.target.value))}
             className="w-full"
           />
+          <p className="text-xs text-brown-mid mt-1">
+            Zoom out below 100% to fit the whole photo — the extra space fills with the app's background color.
+          </p>
         </div>
 
         <div className="flex gap-2">
