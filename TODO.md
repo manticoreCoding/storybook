@@ -13,7 +13,7 @@ can edit or delete it. Nothing else on this list matters until this exists.
 - [x] Scope `getAllStories`/`getStory`/`saveStory`/`deleteStory` (lib/stories.js) to the current user
 - [x] Gate `/admin` and `/admin/edit/[id]` behind login
 - [x] Decide what happens to the two existing seed stories — assigned to the owner's account in local dev data
-- [ ] Deployment step (not yet done — Clerk prod instance not configured): once Clerk is deployed to production, backfill `ownerId` on any existing stories in the production Vercel Blob store that predate the ownership schema (they'll have no `ownerId`/`editorIds` fields). Assign to the owner's Clerk user ID.
+- [x] Clerk deployed to production (the production site) and all 4 pre-existing stories in the production Vercel Blob store (`dragon-park`, `magic-snowman`, `stella-s-drawings`, `the-little-cloud`) backfilled with `ownerId` on 2026-07-10
 
 ## 2. Real database for story metadata
 `getAllStories()` currently does a Blob `list()` + fetch-per-blob on every
@@ -58,6 +58,12 @@ beyond your own family.
 - [ ] Add basic analytics (page views, story creation funnel, upload success rate)
 - [ ] Add an automated test suite (currently none) — at minimum cover lib/stories.js and the upload/crop/resize pipeline
 - [ ] Add CI to run tests + build on PRs
+
+## 8. Admin capabilities & groups
+- [ ] Allow admin to delete stories — `deleteStory` in `lib/stories.js` already enforces owner/admin authorization, but there's no `DELETE` route in `app/api/stories/route.js` and no delete button anywhere in the UI. Needs both.
+- [ ] Allow admin to publish stories to everyone (public visibility beyond owner/editors)
+- [ ] Allow admin to publish stories to everyone in their group (depends on groups existing, see below)
+- [ ] Allow creation of groups with up to 50 users — new data model needed (group entity, membership, size cap); decide how this relates to `ownerId`/`editorIds` on stories
 
 ---
 
