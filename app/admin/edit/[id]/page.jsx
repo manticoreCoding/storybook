@@ -58,6 +58,7 @@ export default async function EditStoryPage({ params }) {
       storyId={id}
       mode="edit"
       canManageSharing={canManageSharing}
+      canDelete={canManageSharing}
       initialCollaborators={collaborators}
     />
   );

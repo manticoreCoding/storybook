@@ -60,10 +60,19 @@ beyond your own family.
 - [ ] Add CI to run tests + build on PRs
 
 ## 8. Admin capabilities & groups
-- [ ] Allow admin to delete stories — `deleteStory` in `lib/stories.js` already enforces owner/admin authorization, but there's no `DELETE` route in `app/api/stories/route.js` and no delete button anywhere in the UI. Needs both.
+- [x] Allow admin (or owner) to delete stories — `DELETE /api/stories/[id]` route added, "Delete Story" danger-zone button on the edit page, and `deleteStory` (`lib/stories.js`) now also removes the story's uploaded images (local `public/images/<id>/` or Blob `images/<id>/*`). Shipped 2026-07-10 as an immediate hard delete — see section 9 for the planned soft-delete/trash model that will supersede this.
 - [ ] Allow admin to publish stories to everyone (public visibility beyond owner/editors)
 - [ ] Allow admin to publish stories to everyone in their group (depends on groups existing, see below)
 - [ ] Allow creation of groups with up to 50 users — new data model needed (group entity, membership, size cap); decide how this relates to `ownerId`/`editorIds` on stories
+
+## 9. Story lifecycle management
+Today's delete (section 8) is an immediate, permanent hard-delete. Replace with a
+proper lifecycle: unpublish, soft-delete with a grace period, then garbage collection.
+
+- [ ] Managing stories
+  - [ ] Unpublish to hide a story from readers (story still exists and is editable, just not visible via its public `/story/[id]` link) — needs a status field on the story schema
+  - [ ] Delete removes the story from the visible list but keeps it (and its images) on a separate "trash" page for 30 days before permanent deletion, instead of deleting immediately like today's implementation
+- [ ] Garbage collection: a scheduled job that permanently deletes stories (and their images) 30 days after being marked for permanent deletion, or immediately if an admin requests it. Needs a cron mechanism (e.g. Vercel Cron) and a `deletedAt`/`purgeAfter` field to query against.
 
 ---
 

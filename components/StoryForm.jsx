@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { resizeImage } from '@/lib/resizeImage';
 import ImagePicker from './ImagePicker';
 
@@ -38,9 +39,11 @@ export default function StoryForm({
   storyId = null,
   mode = 'create',
   canManageSharing = false,
+  canDelete = false,
   initialCollaborators = [],
 }) {
   const isEdit = mode === 'edit';
+  const router = useRouter();
 
   const [title, setTitle] = useState(initialData?.title ?? '');
   const [description, setDescription] = useState(initialData?.description ?? '');
@@ -65,6 +68,8 @@ export default function StoryForm({
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
 
   const effectiveId = isEdit ? storyId : slugify(title);
 
@@ -221,6 +226,28 @@ export default function StoryForm({
       setError(e.message);
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!window.confirm(
+      `Permanently delete "${title}"? This removes the story and all its photos. This cannot be undone.`
+    )) return;
+
+    setDeleteError('');
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/stories/${effectiveId}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.ok) {
+        router.push('/');
+      } else {
+        setDeleteError(data.error || 'Delete failed');
+      }
+    } catch (e) {
+      setDeleteError(e.message);
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -419,6 +446,24 @@ export default function StoryForm({
               : (isEdit ? '✨ Save Changes' : '✨ Save Story to Library')}
           </button>
         </div>
+
+        {isEdit && canDelete && (
+          <section className="bg-white rounded-2xl shadow-sm p-6 space-y-3 border border-red-100">
+            <h2 className="font-lora text-xl font-bold text-red-700">Danger Zone</h2>
+            <p className="text-sm text-brown-mid">
+              Permanently deletes this story and all its photos. This cannot be undone.
+            </p>
+            {deleteError && <p className="text-xs text-red-600">{deleteError}</p>}
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={deleting}
+              className="bg-red-600 text-white font-nunito font-bold text-sm rounded-full px-5 py-2.5 shadow-sm hover:bg-red-700 transition-colors disabled:opacity-60"
+            >
+              {deleting ? 'Deleting…' : '🗑️ Delete Story'}
+            </button>
+          </section>
+        )}
       </form>
     </main>
   );
