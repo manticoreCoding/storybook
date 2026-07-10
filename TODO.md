@@ -8,11 +8,12 @@ priorities below, ordered by blocking-ness rather than by when they were found.
 `/admin/edit/[id]` currently has zero access control. Anyone with a story URL
 can edit or delete it. Nothing else on this list matters until this exists.
 
-- [ ] Add authentication (magic-link or Clerk/Auth.js — evaluate both)
-- [ ] Add a `userId`/owner field to the story schema
-- [ ] Scope `getAllStories`/`getStory`/`saveStory`/`deleteStory` (lib/stories.js) to the current user
-- [ ] Gate `/admin` and `/admin/edit/[id]` behind login
-- [ ] Decide what happens to the two existing seed stories (assign an owner or keep as public demo content)
+- [x] Add authentication (Clerk) — verified end-to-end in a live browser 2026-07-10
+- [x] Add a `userId`/owner field to the story schema (`ownerId` + `editorIds`)
+- [x] Scope `getAllStories`/`getStory`/`saveStory`/`deleteStory` (lib/stories.js) to the current user
+- [x] Gate `/admin` and `/admin/edit/[id]` behind login
+- [x] Decide what happens to the two existing seed stories — assigned to the owner's account in local dev data
+- [ ] Deployment step (not yet done — Clerk prod instance not configured): once Clerk is deployed to production, backfill `ownerId` on any existing stories in the production Vercel Blob store that predate the ownership schema (they'll have no `ownerId`/`editorIds` fields). Assign to the owner's Clerk user ID.
 
 ## 2. Real database for story metadata
 `getAllStories()` currently does a Blob `list()` + fetch-per-blob on every
@@ -51,6 +52,7 @@ beyond your own family.
 ## 6. Sharing / collaboration
 - [ ] Read-only share link per story (e.g. for grandparents)
 - [ ] Multi-editor support per story (e.g. both parents contributing)
+- [x] Fix UX gap in "Share to Manage" (`components/StoryForm.jsx`): "+ Add"/remove now save immediately via their own API call instead of waiting for "Save Changes". Collaborators also display as name (or email if no name) instead of a raw user ID.
 
 ## 7. Quality/observability groundwork
 - [ ] Add basic analytics (page views, story creation funnel, upload success rate)

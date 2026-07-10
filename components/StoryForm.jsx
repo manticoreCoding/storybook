@@ -28,12 +28,27 @@ function clamp(n, min, max) {
  *   storyId      – fixed id when editing (title changes don't change the id)
  *   mode         – 'create' | 'edit'
  */
-export default function StoryForm({ initialData = null, storyId = null, mode = 'create' }) {
+function collaboratorLabel({ firstName, lastName, email }) {
+  const name = [firstName, lastName].filter(Boolean).join(' ');
+  return name || email || 'Unknown user';
+}
+
+export default function StoryForm({
+  initialData = null,
+  storyId = null,
+  mode = 'create',
+  canManageSharing = false,
+  initialCollaborators = [],
+}) {
   const isEdit = mode === 'edit';
 
   const [title, setTitle] = useState(initialData?.title ?? '');
   const [description, setDescription] = useState(initialData?.description ?? '');
   const [coverImage, setCoverImage] = useState(initialData?.coverImage ?? '');
+  const [collaborators, setCollaborators] = useState(initialCollaborators);
+  const [collaboratorEmail, setCollaboratorEmail] = useState('');
+  const [collaboratorError, setCollaboratorError] = useState('');
+  const [resolvingCollaborator, setResolvingCollaborator] = useState(false);
 
   const buildPages = (data, count) =>
     Array.from({ length: count }, (_, i) => ({
@@ -83,6 +98,78 @@ export default function StoryForm({ initialData = null, storyId = null, mode = '
     });
   }
 
+  function buildStoryPayload(overrideEditorIds) {
+    const id = effectiveId;
+    return {
+      id,
+      title,
+      description,
+      coverImage: coverImage || `https://picsum.photos/seed/${id}-cover/600/400`,
+      createdAt: initialData?.createdAt ?? new Date().toISOString().slice(0, 10),
+      editorIds: overrideEditorIds,
+      pages: pages.map((p, i) => ({
+        pageNumber: i + 1,
+        image: p.image || `https://picsum.photos/seed/${id}-p${i + 1}/800/500`,
+        text: p.text,
+      })),
+    };
+  }
+
+  async function persistCollaborators(nextCollaborators) {
+    const res = await fetch('/api/stories', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(buildStoryPayload(nextCollaborators.map((c) => c.id))),
+    });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error || 'Could not save collaborator change');
+    setCollaborators(nextCollaborators);
+  }
+
+  async function addCollaborator() {
+    const email = collaboratorEmail.trim();
+    if (!email) return;
+    setResolvingCollaborator(true);
+    setCollaboratorError('');
+    try {
+      const res = await fetch('/api/collaborators/resolve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setCollaboratorError(data.error || 'Could not find that account');
+        return;
+      }
+      if (collaborators.some((c) => c.id === data.userId)) {
+        setCollaboratorEmail('');
+        return;
+      }
+      const newCollaborator = {
+        id: data.userId,
+        email: data.email,
+        firstName: data.firstName,
+        lastName: data.lastName,
+      };
+      await persistCollaborators([...collaborators, newCollaborator]);
+      setCollaboratorEmail('');
+    } catch (e) {
+      setCollaboratorError(e.message);
+    } finally {
+      setResolvingCollaborator(false);
+    }
+  }
+
+  async function removeCollaborator(userId) {
+    setCollaboratorError('');
+    try {
+      await persistCollaborators(collaborators.filter((c) => c.id !== userId));
+    } catch (e) {
+      setCollaboratorError(e.message);
+    }
+  }
+
   async function handleImageUpload(index, file) {
     if (!effectiveId) {
       setError('Please enter a story title before uploading images.');
@@ -117,26 +204,12 @@ export default function StoryForm({ initialData = null, storyId = null, mode = '
     setError('');
     if (!title) { setError('Story title is required.'); return; }
 
-    const id = effectiveId;
-    const story = {
-      id,
-      title,
-      description,
-      coverImage: coverImage || `https://picsum.photos/seed/${id}-cover/600/400`,
-      createdAt: initialData?.createdAt ?? new Date().toISOString().slice(0, 10),
-      pages: pages.map((p, i) => ({
-        pageNumber: i + 1,
-        image: p.image || `https://picsum.photos/seed/${id}-p${i + 1}/800/500`,
-        text: p.text,
-      })),
-    };
-
     setSaving(true);
     try {
       const res = await fetch('/api/stories', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(story),
+        body: JSON.stringify(buildStoryPayload(collaborators.map((c) => c.id))),
       });
       const data = await res.json();
       if (data.ok) {
@@ -247,6 +320,55 @@ export default function StoryForm({ initialData = null, storyId = null, mode = '
               onConfirm={(file) => handleImageUpload(-1, file)}
             />
           </div>
+
+          {isEdit && canManageSharing && (
+            <div>
+              <label className="admin-label">Share to Manage</label>
+              {collaborators.length > 0 && (
+                <ul className="flex flex-wrap gap-2 mb-2">
+                  {collaborators.map((c) => (
+                    <li
+                      key={c.id}
+                      className="flex items-center gap-2 font-nunito text-xs text-brown-mid bg-amber-light rounded-full px-3 py-1"
+                    >
+                      {collaboratorLabel(c)}
+                      <button
+                        type="button"
+                        onClick={() => removeCollaborator(c.id)}
+                        aria-label="Remove collaborator"
+                        className="text-brown-dark font-bold"
+                      >
+                        ×
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <div className="flex gap-2">
+                <input
+                  type="email"
+                  className="admin-input"
+                  value={collaboratorEmail}
+                  onChange={(e) => setCollaboratorEmail(e.target.value)}
+                  placeholder="collaborator@email.com"
+                />
+                <button
+                  type="button"
+                  onClick={addCollaborator}
+                  disabled={resolvingCollaborator}
+                  className="nav-btn whitespace-nowrap disabled:opacity-60"
+                >
+                  {resolvingCollaborator ? 'Adding…' : '+ Add'}
+                </button>
+              </div>
+              {collaboratorError && (
+                <p className="text-xs text-red-600 mt-1">{collaboratorError}</p>
+              )}
+              <p className="text-xs text-brown-mid mt-1">
+                People you add can edit this story. They need an existing account.
+              </p>
+            </div>
+          )}
         </section>
 
         {/* Pages */}

@@ -1,3 +1,4 @@
+import { ClerkProvider } from '@clerk/nextjs';
 import { Lora, Nunito } from 'next/font/google';
 import './globals.css';
 
@@ -25,8 +26,10 @@ export const viewport = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en" className={`${lora.variable} ${nunito.variable} antialiased`}>
-      <body>{children}</body>
-    </html>
+    <ClerkProvider>
+      <html lang="en" className={`${lora.variable} ${nunito.variable} antialiased`}>
+        <body>{children}</body>
+      </html>
+    </ClerkProvider>
   );
 }
