@@ -2,6 +2,7 @@ import StoryReader from '@/components/StoryReader';
 import { getStory } from '@/lib/stories';
 import { getActor, canManage, canView } from '@/lib/authz';
 import { notFound, redirect } from 'next/navigation';
+import { headers } from 'next/headers';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,7 +19,13 @@ export default async function StoryPage({ params }) {
 
   const actor = await getActor();
   if (!canView(story, actor)) {
-    if (!actor.userId) redirect(`/sign-in?redirect_url=/story/${id}`);
+    if (!actor.userId) {
+      const hdrs = await headers();
+      const host = hdrs.get('host');
+      const proto = hdrs.get('x-forwarded-proto') ?? (host?.startsWith('localhost') ? 'http' : 'https');
+      const destination = `${proto}://${host}/story/${id}`;
+      redirect(`/sign-in?redirect_url=${encodeURIComponent(destination)}`);
+    }
     notFound();
   }
 
