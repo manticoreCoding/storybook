@@ -2,7 +2,7 @@ import StoryForm from '@/components/StoryForm';
 import { notFound } from 'next/navigation';
 import { clerkClient } from '@clerk/nextjs/server';
 import { getStory } from '@/lib/stories';
-import { getActor } from '@/lib/authz';
+import { getActor, canManage } from '@/lib/authz';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,14 +10,6 @@ export async function generateMetadata({ params }) {
   const { id } = await params;
   const story = await getStory(id);
   return { title: story ? `Edit: ${story.title}` : 'Story Not Found' };
-}
-
-function canManage(story, actor) {
-  return (
-    actor.isAdmin ||
-    story.ownerId === actor.userId ||
-    (story.editorIds || []).includes(actor.userId)
-  );
 }
 
 async function resolveCollaborators(editorIds) {

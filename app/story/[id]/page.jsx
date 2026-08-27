@@ -1,6 +1,7 @@
 import StoryReader from '@/components/StoryReader';
 import { getStory } from '@/lib/stories';
-import { notFound } from 'next/navigation';
+import { getActor, canManage, canView } from '@/lib/authz';
+import { notFound, redirect } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,5 +15,12 @@ export default async function StoryPage({ params }) {
   const { id } = await params;
   const story = await getStory(id);
   if (!story) notFound();
-  return <StoryReader story={story} />;
+
+  const actor = await getActor();
+  if (!canView(story, actor)) {
+    if (!actor.userId) redirect(`/sign-in?redirect_url=/story/${id}`);
+    notFound();
+  }
+
+  return <StoryReader story={story} canEdit={canManage(story, actor)} />;
 }

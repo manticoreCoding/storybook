@@ -1,11 +1,11 @@
 {
   "id": "the-sleepy-bear",
   "title": "The Sleepy Bear",
-  "coverImage": "https://picsum.photos/seed/bear-cover/600/400",
   "description": "A bear who can't find the perfect spot to hibernate.",
+  "coverImage": "https://picsum.photos/seed/bear-cover/600/400",
   "createdAt": "2026-04-29",
-  "ownerId": "user_3GJrYm38f0bw2wlFMV2SUzCRhWf",
   "editorIds": [],
+  "isPublic": true,
   "pages": [
     {
       "pageNumber": 1,
@@ -57,5 +57,6 @@
       "image": "https://picsum.photos/seed/bear10/800/500",
       "text": "Outside, the first snowflakes began to fall, dusting the forest in white. Inside his cozy burrow, Bruno smiled a sleepy smile and closed his eyes. He wouldn't wake up until spring. Goodnight, Bruno."
     }
-  ]
+  ],
+  "ownerId": "user_3GJrYm38f0bw2wlFMV2SUzCRhWf"
 }

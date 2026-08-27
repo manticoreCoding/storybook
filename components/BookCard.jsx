@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 
-export default function BookCard({ story }) {
+export default function BookCard({ story, canEdit = false }) {
   return (
     <div className="book-card group flex flex-col">
       {/* Cover image — tapping opens the reader */}
@@ -29,15 +29,17 @@ export default function BookCard({ story }) {
       </Link>
 
       {/* Edit link */}
-      <div className="mt-3 flex justify-center">
-        <Link
-          href={`/admin/edit/${story.id}`}
-          className="font-nunito text-xs text-brown-mid bg-amber-light rounded-full px-3 py-1.5 hover:bg-amber transition-colors"
-          onClick={(e) => e.stopPropagation()}
-        >
-          ✏️ Edit
-        </Link>
-      </div>
+      {canEdit && (
+        <div className="mt-3 flex justify-center">
+          <Link
+            href={`/admin/edit/${story.id}`}
+            className="font-nunito text-xs text-brown-mid bg-amber-light rounded-full px-3 py-1.5 hover:bg-amber transition-colors"
+            onClick={(e) => e.stopPropagation()}
+          >
+            ✏️ Edit
+          </Link>
+        </div>
+      )}
     </div>
   );
 }

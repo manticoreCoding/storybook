@@ -38,14 +38,7 @@ export default async function LibraryPage() {
       </header>
 
       <div className="max-w-5xl mx-auto">
-        <Show when="signed-out">
-          <p className="font-nunito text-brown-mid text-center py-12">
-            Sign in to see your story library.
-          </p>
-        </Show>
-        <Show when="signed-in">
-          <LibraryGrid stories={stories} />
-        </Show>
+        <LibraryGrid stories={stories} actor={actor} signedOutEmptyText="No public stories yet." />
       </div>
     </main>
   );

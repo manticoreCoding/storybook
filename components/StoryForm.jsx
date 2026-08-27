@@ -48,6 +48,7 @@ export default function StoryForm({
   const [title, setTitle] = useState(initialData?.title ?? '');
   const [description, setDescription] = useState(initialData?.description ?? '');
   const [coverImage, setCoverImage] = useState(initialData?.coverImage ?? '');
+  const [isPublic, setIsPublic] = useState(initialData?.isPublic ?? false);
   const [collaborators, setCollaborators] = useState(initialCollaborators);
   const [collaboratorEmail, setCollaboratorEmail] = useState('');
   const [collaboratorError, setCollaboratorError] = useState('');
@@ -112,6 +113,7 @@ export default function StoryForm({
       coverImage: coverImage || `https://picsum.photos/seed/${id}-cover/600/400`,
       createdAt: initialData?.createdAt ?? new Date().toISOString().slice(0, 10),
       editorIds: overrideEditorIds,
+      isPublic,
       pages: pages.map((p, i) => ({
         pageNumber: i + 1,
         image: p.image || `https://picsum.photos/seed/${id}-p${i + 1}/800/500`,
@@ -269,7 +271,7 @@ export default function StoryForm({
   }
 
   return (
-    <main className="min-h-screen bg-cream pb-16">
+    <main className="min-h-screen bg-cream pb-28">
       <header className="bg-white shadow-sm sticky top-0 z-10">
         <div className="max-w-3xl mx-auto px-4 py-4 flex items-center gap-4">
           <Link
@@ -347,6 +349,23 @@ export default function StoryForm({
               onConfirm={(file) => handleImageUpload(-1, file)}
             />
           </div>
+
+          {(!isEdit || canManageSharing) && (
+            <div>
+              <label className="flex items-center gap-2 font-nunito text-sm text-brown-dark">
+                <input
+                  type="checkbox"
+                  checked={isPublic}
+                  onChange={(e) => setIsPublic(e.target.checked)}
+                  className="w-4 h-4"
+                />
+                Make this story public
+              </label>
+              <p className="text-xs text-brown-mid mt-1">
+                Anyone with the link can view a public story without signing in.
+              </p>
+            </div>
+          )}
 
           {isEdit && canManageSharing && (
             <div>
@@ -435,16 +454,18 @@ export default function StoryForm({
           ))}
         </section>
 
-        <div className="pb-4">
-          <button
-            type="submit"
-            disabled={saving}
-            className="w-full bg-rose text-white font-nunito font-bold text-lg rounded-2xl py-4 shadow-md active:scale-95 transition-transform disabled:opacity-60"
-          >
-            {saving
-              ? (isEdit ? 'Saving changes…' : 'Saving…')
-              : (isEdit ? '✨ Save Changes' : '✨ Save Story to Library')}
-          </button>
+        <div className="fixed bottom-0 inset-x-0 z-20 bg-white border-t border-amber-light shadow-[0_-2px_10px_rgba(0,0,0,0.06)] px-4 py-3">
+          <div className="max-w-3xl mx-auto">
+            <button
+              type="submit"
+              disabled={saving}
+              className="w-full bg-rose-dark text-white font-nunito font-bold text-lg rounded-2xl py-4 shadow-md active:scale-95 transition-transform disabled:opacity-60"
+            >
+              {saving
+                ? (isEdit ? 'Saving changes…' : 'Saving…')
+                : (isEdit ? '✨ Save Changes' : '✨ Save Story to Library')}
+            </button>
+          </div>
         </div>
 
         {isEdit && canDelete && (
