@@ -17,6 +17,15 @@ export default function BookCard({ story, canEdit = false }) {
             className="object-cover transition-transform duration-300 group-hover:scale-105"
             unoptimized
           />
+          {story.isPublic && (
+            <span
+              title="Public"
+              aria-label="Public story"
+              className="absolute bottom-2 right-2 flex items-center justify-center w-7 h-7 rounded-full bg-white/90 shadow-md text-sm"
+            >
+              🌐
+            </span>
+          )}
         </div>
         <h2 className="font-lora text-xl font-bold text-brown-dark text-center leading-snug px-1">
           {story.title}
