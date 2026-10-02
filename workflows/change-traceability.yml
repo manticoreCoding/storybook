@@ -1,0 +1,29 @@
+name: Change Traceability Agent
+
+on:
+  pull_request:
+    types: [opened, reopened, edited, labeled]
+
+permissions:
+  contents: read
+  pull-requests: write
+  models: read
+
+jobs:
+  trace:
+    runs-on: ubuntu-latest
+    env:
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+      PR_TITLE: ${{ github.event.pull_request.title }}
+      PR_BODY: ${{ github.event.pull_request.body }}
+      PR_BRANCH: ${{ github.head_ref }}
+      JIRA_BASE_URL: ${{ vars.JIRA_BASE_URL }}
+      JIRA_PROJECT: ${{ vars.JIRA_PROJECT }}
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - name: Describe the change
+        run: |
+          echo "PR #$PR_NUMBER on branch $PR_BRANCH"
+          echo "Title: $PR_TITLE"
+          gh pr diff "$PR_NUMBER" --name-only | tee changed_files.txt
