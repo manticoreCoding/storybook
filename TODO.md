@@ -80,3 +80,6 @@ proper lifecycle: unpublish, soft-delete with a grace period, then garbage colle
 1. Auth + per-user story ownership
 2. Print-on-demand fulfillment as the differentiator
 3. Real database for story metadata
+
+
+2026-10-02 - Test branching and workflow [TO DELETE]
