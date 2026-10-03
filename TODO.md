@@ -83,3 +83,4 @@ proper lifecycle: unpublish, soft-delete with a grace period, then garbage colle
 
 
 2026-10-02 - Test branching and workflow [TO DELETE]
+2026-10-03 - Test JIRA ticket check [TO DELETE]
