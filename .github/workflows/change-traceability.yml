@@ -27,3 +27,37 @@ jobs:
           echo "PR #$PR_NUMBER on branch $PR_BRANCH"
           echo "Title: $PR_TITLE"
           gh pr diff "$PR_NUMBER" --name-only | tee changed_files.txt
+
+      - name: Look up every ticket the PR cites, and its spec
+        env:
+          JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          gh pr view "$PR_NUMBER" --json commits --jq '.commits[].messageHeadline' > commit_messages.txt
+          KEYS=$( { echo "$PR_BRANCH"; echo "$PR_TITLE"; cat commit_messages.txt; } \
+            | grep -oE "${JIRA_PROJECT}-[0-9]+" | sort -u || true)
+          echo "Keys cited: ${KEYS:-none}"
+          echo '[]' > tickets.json
+          for KEY in $KEYS; do
+            STATUS=$(curl --silent --show-error --output issue.json --write-out "%{http_code}" \
+              --user "$JIRA_EMAIL:$JIRA_API_TOKEN" --header "Accept: application/json" \
+              "$JIRA_BASE_URL/rest/api/3/issue/$KEY?fields=summary,status")
+            if [ "$STATUS" = "200" ]; then
+              if gh api -H "Accept: application/vnd.github.raw" \
+                   "repos/$GH_REPO/contents/specs/$KEY/spec.md?ref=$BASE_SHA" > spec.md 2> /dev/null; then
+                HAS_SPEC=true
+              else
+                HAS_SPEC=false; : > spec.md
+              fi
+              jq --slurpfile i issue.json --rawfile spec spec.md --argjson has "$HAS_SPEC" \
+                '. + [{key: $i[0].key, found: true, summary: $i[0].fields.summary,
+                       status: $i[0].fields.status.name, has_spec: $has, spec: $spec}]' \
+                tickets.json > t.json && mv t.json tickets.json
+            elif [ "$STATUS" = "404" ]; then
+              jq --arg k "$KEY" '. + [{key: $k, found: false}]' tickets.json > t.json && mv t.json tickets.json
+            else
+              echo "::error::Jira returned $STATUS for $KEY"; cat issue.json; exit 1
+            fi
+          done
+          jq 'map(del(.spec))' tickets.json
