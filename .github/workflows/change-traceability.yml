@@ -34,9 +34,13 @@ jobs:
           JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
+          if [ -z "$JIRA_PROJECT" ] || [ -z "$JIRA_BASE_URL" ]; then
+            echo "::error::JIRA_PROJECT or JIRA_BASE_URL is empty. Add both under Settings > Secrets and variables > Actions > Variables."
+            exit 1
+          fi
           gh pr view "$PR_NUMBER" --json commits --jq '.commits[].messageHeadline' > commit_messages.txt
           KEYS=$( { echo "$PR_BRANCH"; echo "$PR_TITLE"; cat commit_messages.txt; } \
-            | grep -oE "${JIRA_PROJECT}-[0-9]+" | sort -u || true)
+            | grep -oE -e "${JIRA_PROJECT}-[0-9]+" | sort -u || true)
           echo "Keys cited: ${KEYS:-none}"
           echo '[]' > tickets.json
           for KEY in $KEYS; do
