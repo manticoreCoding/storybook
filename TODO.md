@@ -59,6 +59,8 @@ beyond your own family.
 - [ ] Add an automated test suite (currently none) — at minimum cover lib/stories.js and the upload/crop/resize pipeline
 - [ ] Add CI to run tests + build on PRs
 
+Created KAN-9 for this change
+
 ## 8. Admin capabilities & groups
 - [x] Allow admin (or owner) to delete stories — `DELETE /api/stories/[id]` route added, "Delete Story" danger-zone button on the edit page, and `deleteStory` (`lib/stories.js`) now also removes the story's uploaded images (local `public/images/<id>/` or Blob `images/<id>/*`). Shipped 2026-07-10 as an immediate hard delete — see section 9 for the planned soft-delete/trash model that will supersede this.
 - [ ] Allow admin to publish stories to everyone (public visibility beyond owner/editors)
