@@ -32,11 +32,15 @@ jobs:
         env:
           JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
           JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
         run: |
+          if [ -z "$JIRA_PROJECT" ] || [ -z "$JIRA_BASE_URL" ]; then
+            echo "::error::JIRA_PROJECT or JIRA_BASE_URL is empty. Add both under Settings > Secrets and variables > Actions > Variables."
+            exit 1
+          fi
           gh pr view "$PR_NUMBER" --json commits --jq '.commits[].messageHeadline' > commit_messages.txt
           KEYS=$( { echo "$PR_BRANCH"; echo "$PR_TITLE"; cat commit_messages.txt; } \
-            | grep -oE "${JIRA_PROJECT}-[0-9]+" | sort -u || true)
+            | grep -oE -e "${JIRA_PROJECT}-[0-9]+" | sort -u || true)
           echo "Keys cited: ${KEYS:-none}"
           echo '[]' > tickets.json
           for KEY in $KEYS; do
@@ -45,7 +49,7 @@ jobs:
               "$JIRA_BASE_URL/rest/api/3/issue/$KEY?fields=summary,status")
             if [ "$STATUS" = "200" ]; then
               if gh api -H "Accept: application/vnd.github.raw" \
-                   "repos/$GH_REPO/contents/specs/$KEY/spec.md?ref=$BASE_SHA" > spec.md 2> /dev/null; then
+                   "repos/$GH_REPO/contents/specs/$KEY/spec.md?ref=$BASE_REF" > spec.md 2> /dev/null; then
                 HAS_SPEC=true
               else
                 HAS_SPEC=false; : > spec.md
@@ -61,3 +65,19 @@ jobs:
             fi
           done
           jq 'map(del(.spec))' tickets.json
+
+      - name: Ticket gate (rules, no model)
+        env:
+          EMERGENCY: ${{ contains(github.event.pull_request.labels.*.name, 'emergency-change') }}
+        run: |
+          if [ "$EMERGENCY" = "true" ]; then
+            GATE="emergency"
+          elif [ "$(jq length tickets.json)" = "0" ]; then
+            GATE="no_ticket"
+          elif jq -e 'any(.[]; .found == false or .has_spec == false or (.status // "" | ascii_downcase | test("cancel|^idea$")))' tickets.json > /dev/null; then
+            GATE="invalid_ticket"
+          else
+            GATE="check_scope"
+          fi
+          echo "Gate: $GATE"
+          echo "GATE=$GATE" >> "$GITHUB_ENV"

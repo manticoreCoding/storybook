@@ -1,31 +1,14 @@
 # KAN-xxx: Title
 
-- **Jira:** KAN-xxx
 - **Status:** Draft
-- **Branch:** KAN-xxx-short-slug
-- **Owner:**
 - **Last updated:** YYYY-MM-DD
 
-## Problem
-
-What is wrong or missing today, and who it affects.
-
-## Goal
-
-The outcome this ticket delivers, in one or two sentences.
-
-## User stories
-
-- As a ..., I want ..., so that ...
+## Intent
+One or two sentences: what problem this solves and for whom.
 
 ## Acceptance criteria
-
-- [ ] Given ..., when ..., then ...
+- <observable behaviour the change must deliver>
+- <another>
 
 ## Out of scope
-
--
-
-## Open questions
-
--
+- <what this change must not touch>
