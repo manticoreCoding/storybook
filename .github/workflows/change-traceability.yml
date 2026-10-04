@@ -65,3 +65,19 @@ jobs:
             fi
           done
           jq 'map(del(.spec))' tickets.json
+
+      - name: Ticket gate (rules, no model)
+        env:
+          EMERGENCY: ${{ contains(github.event.pull_request.labels.*.name, 'emergency-change') }}
+        run: |
+          if [ "$EMERGENCY" = "true" ]; then
+            GATE="emergency"
+          elif [ "$(jq length tickets.json)" = "0" ]; then
+            GATE="no_ticket"
+          elif jq -e 'any(.[]; .found == false or .has_spec == false or (.status // "" | ascii_downcase | test("cancel|^idea$")))' tickets.json > /dev/null; then
+            GATE="invalid_ticket"
+          else
+            GATE="check_scope"
+          fi
+          echo "Gate: $GATE"
+          echo "GATE=$GATE" >> "$GITHUB_ENV"
