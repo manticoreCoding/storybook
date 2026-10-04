@@ -70,14 +70,25 @@ jobs:
         env:
           EMERGENCY: ${{ contains(github.event.pull_request.labels.*.name, 'emergency-change') }}
         run: |
+          REASONS=$(jq -r '[.[] | . as $t
+            | [ (if $t.found == false then "not found in Jira" else empty end),
+                (if $t.found and ($t.status | ascii_downcase | test("cancel|^idea$")) then "Jira status is \($t.status) (not approved work)" else empty end),
+                (if $t.found and $t.has_spec == false then "no spec at specs/\($t.key)/spec.md on main" else empty end) ]
+            | select(length > 0) | "\($t.key): " + join(" and ")] | join("; ")' tickets.json)
           if [ "$EMERGENCY" = "true" ]; then
             GATE="emergency"
+            REASON="emergency-change label is set; ticket checks skipped"
           elif [ "$(jq length tickets.json)" = "0" ]; then
             GATE="no_ticket"
-          elif jq -e 'any(.[]; .found == false or .has_spec == false or (.status // "" | ascii_downcase | test("cancel|^idea$")))' tickets.json > /dev/null; then
+            REASON="no Jira key in the branch name, PR title or commit messages"
+          elif [ -n "$REASONS" ]; then
             GATE="invalid_ticket"
+            REASON="$REASONS"
           else
             GATE="check_scope"
+            REASON="all cited tickets found, approved and specified: $(jq -r 'map(.key) | join(", ")' tickets.json)"
           fi
           echo "Gate: $GATE"
+          echo "Reason: $REASON"
           echo "GATE=$GATE" >> "$GITHUB_ENV"
+          echo "GATE_REASON=$REASON" >> "$GITHUB_ENV"
