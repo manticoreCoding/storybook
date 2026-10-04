@@ -110,11 +110,15 @@ jobs:
                 {role: "user", content: ("CITED TICKETS\n" + ($tickets[0] | tostring) + "\nPULL REQUEST\nTitle: " + $title + "\nDescription: " + $body + "\nDIFF (may be truncated)\n" + $diff)}
               ]
             }' > request.json
-          curl --silent --show-error --fail-with-body \
+          HTTP=$(curl --silent --show-error \
             --header "Authorization: Bearer $GH_TOKEN" \
             --header "Content-Type: application/json" \
             --data @request.json \
-            https://models.github.ai/inference/chat/completions > response.json
+            --output response.json --write-out "%{http_code}" \
+            https://models.github.ai/inference/chat/completions)
+          echo "Models API HTTP $HTTP"
+          head -c 1000 response.json; echo
+          jq empty response.json || { echo "::error::Models API did not return JSON"; exit 1; }
           jq -r '.choices[0].message.content' response.json > decision.json
           jq -e '(.decision | IN("in_scope", "out_of_scope")) and (.uncovered_changes | type == "array")' decision.json > /dev/null \
             || { echo "::error::Model returned an answer outside the allowed shape"; cat decision.json; exit 1; }
