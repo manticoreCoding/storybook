@@ -32,7 +32,7 @@ jobs:
         env:
           JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
           JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
         run: |
           if [ -z "$JIRA_PROJECT" ] || [ -z "$JIRA_BASE_URL" ]; then
             echo "::error::JIRA_PROJECT or JIRA_BASE_URL is empty. Add both under Settings > Secrets and variables > Actions > Variables."
@@ -49,7 +49,7 @@ jobs:
               "$JIRA_BASE_URL/rest/api/3/issue/$KEY?fields=summary,status")
             if [ "$STATUS" = "200" ]; then
               if gh api -H "Accept: application/vnd.github.raw" \
-                   "repos/$GH_REPO/contents/specs/$KEY/spec.md?ref=$BASE_SHA" > spec.md 2> /dev/null; then
+                   "repos/$GH_REPO/contents/specs/$KEY/spec.md?ref=$BASE_REF" > spec.md 2> /dev/null; then
                 HAS_SPEC=true
               else
                 HAS_SPEC=false; : > spec.md
