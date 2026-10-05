@@ -7,7 +7,6 @@ on:
 permissions:
   contents: read
   pull-requests: write
-  models: read
 
 jobs:
   trace:
@@ -95,14 +94,18 @@ jobs:
 
       - name: Scope check (the model's only job)
         if: env.GATE == 'check_scope'
+        env:
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          LLM_MODEL: gemini-2.5-flash
         run: |
           gh pr diff "$PR_NUMBER" > diff_full.txt
           head -c 20000 diff_full.txt > diff.txt
           jq -n \
+            --arg model "$LLM_MODEL" \
             --arg title "$PR_TITLE" --arg body "$PR_BODY" \
             --rawfile diff diff.txt --slurpfile tickets tickets.json \
             '{
-              model: "openai/gpt-4o",
+              model: $model,
               temperature: 0,
               response_format: {type: "json_object"},
               messages: [
@@ -111,14 +114,15 @@ jobs:
               ]
             }' > request.json
           HTTP=$(curl --silent --show-error \
-            --header "Authorization: Bearer $GH_TOKEN" \
+            --header "Authorization: Bearer $LLM_API_KEY" \
             --header "Content-Type: application/json" \
             --data @request.json \
             --output response.json --write-out "%{http_code}" \
-            https://models.github.ai/inference/chat/completions)
-          echo "Models API HTTP $HTTP"
-          head -c 1000 response.json; echo
-          jq empty response.json || { echo "::error::Models API did not return JSON"; exit 1; }
+            https://generativelanguage.googleapis.com/v1beta/openai/chat/completions)
+          echo "Model API HTTP $HTTP"
+          if [ "$HTTP" != "200" ]; then
+            echo "::error::Model API returned HTTP $HTTP"; head -c 1000 response.json; echo; exit 1
+          fi
           jq -r '.choices[0].message.content' response.json > decision.json
           jq -e '(.decision | IN("in_scope", "out_of_scope")) and (.uncovered_changes | type == "array")' decision.json > /dev/null \
             || { echo "::error::Model returned an answer outside the allowed shape"; cat decision.json; exit 1; }
