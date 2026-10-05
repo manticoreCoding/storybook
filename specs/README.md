@@ -10,17 +10,17 @@ specs/
     spec.md             # what and why
     plan.md             # how
     tasks.md            # ordered implementation checklist
-  KAN-123-short-slug/   # one folder per Jira ticket
+  KAN-123/              # one folder per Jira ticket
 ```
 
 ## Flow
 
 1. **Spec**
-   - Copy `_template/` to `specs/KAN-xxx-short-slug/`
+   - Copy `_template/` to `specs/KAN-xxx/`
    - Fill in `spec.md` from the Jira ticket
    - Review and set status to `Approved`
 2. **Branch**
-   - Create a branch named `KAN-xxx-short-slug` from `main`
+   - Create a branch for the ticket from `main`
    - All work for the ticket, including spec edits after approval, happens on this branch
 3. **Plan**
    - Fill in `plan.md` and `tasks.md` against the current codebase
@@ -32,6 +32,12 @@ specs/
 5. **Done**
    - All acceptance criteria in `spec.md` are met
    - Set status to `Done` and merge the branch
+
+## Naming
+
+- With the current CI/CD process, spec folders and branches do not follow a short-slug naming convention, for simplicity
+- Name spec folders by ticket key only (e.g. `KAN-9`)
+- A consistent naming convention for folders and branches will be added later under a separate Jira ticket
 
 ## Status values
 

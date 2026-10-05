@@ -6,4 +6,4 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 # Spec-driven development
 
-Feature and fix work starts from a Jira ticket in the `KAN` project and an approved spec in `specs/KAN-xxx-short-slug/`. Each ticket gets its own branch named after its spec folder. Follow the flow in `specs/README.md`, and do not write code for a ticket until its spec is `Approved`.
+Feature and fix work starts from a Jira ticket in the `KAN` project and an approved spec in `specs/KAN-xxx/`. Each ticket gets its own branch. Follow the flow in `specs/README.md`, and do not write code for a ticket until its spec is `Approved`.
