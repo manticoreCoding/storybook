@@ -96,7 +96,7 @@ jobs:
         if: env.GATE == 'check_scope'
         env:
           LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
-          LLM_MODEL: gemini-3.8-flash
+          LLM_MODEL: gemini-3.5-flash-lite
         run: |
           gh pr diff "$PR_NUMBER" > diff_full.txt
           head -c 20000 diff_full.txt > diff.txt
