@@ -130,3 +130,48 @@ jobs:
           jq -e '(.decision == "in_scope") == (.uncovered_changes | length == 0)' decision.json > /dev/null \
             || { echo "::error::Model contradicted itself: decision and uncovered_changes disagree"; cat decision.json; exit 1; }
           cat decision.json
+
+      - name: Record and enforce the result
+        env:
+          JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          case "$GATE" in
+            emergency)
+              RESULT="emergency"
+              DETAIL="Emergency change: ticket checks skipped. A retrospective ticket and review are required." ;;
+            no_ticket)
+              RESULT="blocked"
+              DETAIL="No ticket: $GATE_REASON." ;;
+            invalid_ticket)
+              RESULT="blocked"
+              DETAIL="Ticket problem: $GATE_REASON." ;;
+            check_scope)
+              if [ "$(jq -r '.decision' decision.json)" = "in_scope" ]; then
+                RESULT="pass"
+                DETAIL="$(jq -r '.reasoning' decision.json)"
+              else
+                RESULT="blocked"
+                DETAIL="Out of scope: $(jq -r '.uncovered_changes | join("; ")' decision.json). $(jq -r '.reasoning' decision.json)"
+              fi ;;
+          esac
+          CITED=$(jq -r 'map(.key) | join(", ") | if . == "" then "none" else . end' tickets.json)
+          echo "Result: $RESULT"
+          echo "$DETAIL"
+
+          printf '### Change traceability check\n**Result:** %s\n**Tickets cited:** %s\n**Detail:** %s\n' \
+            "$RESULT" "$CITED" "$DETAIL" > comment.md
+          gh pr comment "$PR_NUMBER" --body-file comment.md
+
+          for KEY in $(jq -r '.[] | select(.found) | .key' tickets.json); do
+            jq -n --arg b "Change traceability check on PR #$PR_NUMBER ($PR_URL): $RESULT. $DETAIL" '{body: $b}' \
+              | curl --silent --show-error --fail-with-body --user "$JIRA_EMAIL:$JIRA_API_TOKEN" \
+                  --header "Content-Type: application/json" --data @- \
+                  "$JIRA_BASE_URL/rest/api/2/issue/$KEY/comment" > /dev/null
+          done
+
+          if [ "$RESULT" = "blocked" ]; then
+            echo "::error::$DETAIL"
+            exit 1
+          fi
