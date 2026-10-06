@@ -1,6 +1,6 @@
 # KAN-9: Add Basic Analytics
 
-- **Status:** Approved
+- **Status:** Done
 - **Last updated:** 2026-10-05
 
 ## Intent

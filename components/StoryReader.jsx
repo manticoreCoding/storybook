@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import CoverView from './CoverView';
 import PageView from './PageView';
@@ -10,6 +10,13 @@ export default function StoryReader({ story, canEdit = false }) {
   const [currentPage, setCurrentPage] = useState(0); // 0 = cover
   const [copied, setCopied] = useState(false);
   const touchStartX = useRef(null);
+  const viewSent = useRef(false);
+
+  useEffect(() => {
+    if (viewSent.current) return;
+    viewSent.current = true;
+    fetch(`/api/stories/${story.id}/view`, { method: 'POST' }).catch(() => {});
+  }, [story.id]);
 
   async function handleShare() {
     const url = `${window.location.origin}/story/${story.id}`;

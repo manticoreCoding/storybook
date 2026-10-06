@@ -35,6 +35,11 @@ export default function BookCard({ story, canEdit = false }) {
             {story.description}
           </p>
         )}
+        {story.viewCount !== undefined && (
+          <p className="font-nunito text-xs text-brown-mid text-center mt-1">
+            👁 {story.viewCount} {story.viewCount === 1 ? 'view' : 'views'}
+          </p>
+        )}
       </Link>
 
       {/* Edit link */}

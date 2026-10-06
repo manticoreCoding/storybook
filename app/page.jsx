@@ -1,13 +1,17 @@
 import { Show, SignInButton, UserButton } from '@clerk/nextjs';
 import LibraryGrid from '@/components/LibraryGrid';
 import { getAllStories } from '@/lib/stories';
-import { getActor } from '@/lib/authz';
+import { getActor, canSeeViews } from '@/lib/authz';
+import { getViewCounts } from '@/lib/views';
 
 export const dynamic = 'force-dynamic';
 
 export default async function LibraryPage() {
   const actor = await getActor();
-  const stories = await getAllStories(actor);
+  const allStories = await getAllStories(actor);
+  const viewIds = allStories.filter((s) => canSeeViews(s, actor)).map((s) => s.id);
+  const viewCounts = await getViewCounts(viewIds);
+  const stories = allStories.map((s) => (s.id in viewCounts ? { ...s, viewCount: viewCounts[s.id] } : s));
 
   return (
     <main className="min-h-screen bg-cream">
