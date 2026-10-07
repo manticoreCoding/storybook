@@ -27,6 +27,20 @@ jobs:
           echo "Title: $PR_TITLE"
           gh pr diff "$PR_NUMBER" --name-only | tee changed_files.txt
 
+      - name: Classify changed files (spec, code or mixed)
+        run: |
+          SPEC_COUNT=$(grep -c '^specs/' changed_files.txt || true)
+          CODE_COUNT=$(grep -vc '^specs/' changed_files.txt || true)
+          if [ "$SPEC_COUNT" -gt 0 ] && [ "$CODE_COUNT" -gt 0 ]; then
+            KIND="mixed"
+          elif [ "$SPEC_COUNT" -gt 0 ]; then
+            KIND="spec"
+          else
+            KIND="code"
+          fi
+          echo "Spec files: $SPEC_COUNT, other files: $CODE_COUNT, kind: $KIND"
+          echo "PR_KIND=$KIND" >> "$GITHUB_ENV"          
+
       - name: Look up every ticket the PR cites, and its spec
         env:
           JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
