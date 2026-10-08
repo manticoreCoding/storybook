@@ -27,7 +27,7 @@ specs/
    - Review before implementation starts
 4. **Implement**
    - Work through `tasks.md` in order, checking off items as they land
-   - Prefix commit messages with `KAN-xxx:`
+   - Start commit messages with a type and the ticket key, e.g. `feat: KAN-xxx <summary>` (see Commit messages)
    - Set status to `In Progress`
 5. **Done**
    - All acceptance criteria in `spec.md` are met
@@ -38,6 +38,23 @@ specs/
 - With the current CI/CD process, spec folders and branches do not follow a short-slug naming convention, for simplicity
 - Name spec folders by ticket key only (e.g. `KAN-9`)
 - A consistent naming convention for folders and branches will be added later under a separate Jira ticket
+
+## Commit messages
+
+- Format: `<type>: <ticket keys> <summary>`
+  - Ticket work: `feat: KAN-9 Count public story views`
+  - More than one ticket: `fix: KAN-9 KAN-12 Correct view count on shared stories`
+  - Work outside a ticket: no key, e.g. `ci: Add spec lane to the ticket gate`
+- Types, from [Conventional Commits](https://www.conventionalcommits.org/):
+  - `feat:` new behaviour
+  - `fix:` bug fix
+  - `refactor:` code change with no behaviour change
+  - `test:` tests only
+  - `docs:` documentation only, including specs
+  - `ci:` workflows and pipeline files under `.github/`
+  - `chore:` tooling, config and dependencies
+- Features and fixes always have a ticket, so `feat:` and `fix:` always carry a key
+- Write the summary in sentence case and imperative mood, keeping the whole line under about 72 characters
 
 ## Status values
 
