@@ -82,29 +82,56 @@ jobs:
       - name: Ticket gate (rules, no model)
         env:
           EMERGENCY: ${{ contains(github.event.pull_request.labels.*.name, 'emergency-change') }}
+          SPEC_APPROVED: ${{ contains(github.event.pull_request.labels.*.name, 'spec-approved') }}
         run: |
+          # Code lane: each cited ticket must exist, be approved work, and have a spec on main
           REASONS=$(jq -r '[.[] | . as $t
             | [ (if $t.found == false then "not found in Jira" else empty end),
                 (if $t.found and ($t.status | ascii_downcase | test("cancel|^idea$")) then "Jira status is \($t.status) (not approved work)" else empty end),
                 (if $t.found and $t.has_spec == false then "no spec at specs/\($t.key)/spec.md on main" else empty end) ]
             | select(length > 0) | "\($t.key): " + join(" and ")] | join("; ")' tickets.json)
+          # Spec lane: Idea allowed, no spec on main expected, Cancelled still blocked
+          SPEC_REASONS=$(jq -r '[.[] | . as $t
+            | [ (if $t.found == false then "not found in Jira" else empty end),
+                (if $t.found and ($t.status | ascii_downcase | test("cancel")) then "Jira status is \($t.status) (no new spec for cancelled work)" else empty end) ]
+            | select(length > 0) | "\($t.key): " + join(" and ")] | join("; ")' tickets.json)
+          # Every changed spec file must sit in the folder of a ticket the PR cites
+          STRAY=$(jq -R -s -r --slurpfile t tickets.json '
+            [ split("\n")[] | select(startswith("specs/")) | . as $f
+              | select([ $t[0][] | select(.found) | "specs/\(.key)/" ] | map(. as $p | $f | startswith($p)) | any | not) ]
+            | join(", ")' changed_files.txt)
+          CITED=$(jq -r 'map(.key) | join(", ")' tickets.json)
           if [ "$EMERGENCY" = "true" ]; then
             GATE="emergency"
             REASON="emergency-change label is set; ticket checks skipped"
           elif [ "$(jq length tickets.json)" = "0" ]; then
             GATE="no_ticket"
             REASON="no Jira key in the branch name, PR title or commit messages"
+          elif [ "$PR_KIND" = "mixed" ]; then
+            GATE="mixed"
+            REASON="this PR changes a spec and code together; split it into a spec PR, merged first, and a code PR"
+          elif [ "$PR_KIND" = "spec" ] && [ -n "$SPEC_REASONS" ]; then
+            GATE="invalid_ticket"
+            REASON="$SPEC_REASONS"
+          elif [ "$PR_KIND" = "spec" ] && [ -n "$STRAY" ]; then
+            GATE="spec_outside_ticket"
+            REASON="spec files outside every cited ticket's folder: $STRAY"
+          elif [ "$PR_KIND" = "spec" ]; then
+            GATE="spec_change"
+            REASON="spec change for $CITED: tickets found and not cancelled, files inside their folders"
           elif [ -n "$REASONS" ]; then
             GATE="invalid_ticket"
             REASON="$REASONS"
           else
             GATE="check_scope"
-            REASON="all cited tickets found, approved and specified: $(jq -r 'map(.key) | join(", ")' tickets.json)"
+            REASON="all cited tickets found, approved and specified: $CITED"
           fi
+          echo "Kind: $PR_KIND"
           echo "Gate: $GATE"
           echo "Reason: $REASON"
           echo "GATE=$GATE" >> "$GITHUB_ENV"
           echo "GATE_REASON=$REASON" >> "$GITHUB_ENV"
+          echo "SPEC_APPROVED=$SPEC_APPROVED" >> "$GITHUB_ENV"
 
       - name: Scope check (the model's only job)
         if: env.GATE == 'check_scope'
@@ -169,6 +196,9 @@ jobs:
                 RESULT="blocked"
                 DETAIL="Out of scope: $(jq -r '.uncovered_changes | join("; ")' decision.json). $(jq -r '.reasoning' decision.json)"
               fi ;;
+            *)
+              RESULT="blocked"
+              DETAIL="The check has no rule yet for gate $GATE, so it blocks by default" ;;              
           esac
           CITED=$(jq -r 'map(.key) | join(", ") | if . == "" then "none" else . end' tickets.json)
           echo "Result: $RESULT"
