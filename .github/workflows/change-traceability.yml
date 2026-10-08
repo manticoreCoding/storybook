@@ -133,6 +133,33 @@ jobs:
           echo "GATE_REASON=$REASON" >> "$GITHUB_ENV"
           echo "SPEC_APPROVED=$SPEC_APPROVED" >> "$GITHUB_ENV"
 
+      - name: Spec structure (rules, no model)
+        if: env.GATE == 'spec_change'
+        run: |
+          : > structure_problems.txt
+          for F in $(grep -E '^specs/[^/]+/spec\.md$' changed_files.txt || true); do
+            KEY=$(echo "$F" | cut -d/ -f2)
+            if gh api -H "Accept: application/vnd.github.raw" \
+                 "repos/$GH_REPO/contents/$F?ref=$PR_BRANCH" > "proposed_$KEY.md" 2> err.txt; then
+              :
+            elif grep -q "Not Found" err.txt; then
+              echo "$F is deleted in this PR; deleting a spec needs a person, not this check" >> structure_problems.txt
+              rm -f "proposed_$KEY.md"
+              continue
+            else
+              echo "::error::Could not read $F from the PR branch"; cat err.txt; exit 1
+            fi
+            head -n 1 "proposed_$KEY.md" | grep -q "^# $KEY:" \
+              || echo "$F: first line must be '# $KEY: <summary>'" >> structure_problems.txt
+            for H in "Intent" "Acceptance criteria" "Out of scope"; do
+              BODY=$(awk -v h="## $H" '$0 == h {on=1; next} /^## / {on=0} on' "proposed_$KEY.md" | grep -v '^[[:space:]]*$' || true)
+              [ -n "$BODY" ] || echo "$F: section '## $H' is missing or empty" >> structure_problems.txt
+            done
+          done
+          PROBLEMS=$(jq -R -s -r 'split("\n") | map(select(length > 0)) | join("; ")' structure_problems.txt)
+          echo "Structure problems: ${PROBLEMS:-none}"
+          echo "STRUCTURE_PROBLEMS=$PROBLEMS" >> "$GITHUB_ENV"
+
       - name: Scope check (the model's only job)
         if: env.GATE == 'check_scope'
         env:
