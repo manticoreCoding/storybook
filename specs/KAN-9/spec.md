@@ -13,6 +13,7 @@ As an author, I want to know how many total views each of my storybooks has had.
 - GIVEN the story's owner, a shared editor, or an admin loads the story WHEN the page renders THEN the view count is not incremented.
 - GIVEN the story's owner or an admin views the library page WHEN the page loads THEN the story's card shows its total view count.
 - GIVEN any other user or a signed-out visitor views the library page WHEN the page loads THEN the story's card does not show a view count.
+- GIVEN we need to run tests locally WHEN view counts are updated THEN a JSON file will be updated for keep track of the count.
 
 ## Out of scope
 - Per-page view counts
