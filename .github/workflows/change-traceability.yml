@@ -291,6 +291,31 @@ jobs:
                 RESULT="blocked"
                 DETAIL="Out of scope: $(jq -r '.uncovered_changes | join("; ")' decision.json). $(jq -r '.reasoning' decision.json)"
               fi ;;
+            mixed)
+              RESULT="blocked"
+              DETAIL="Mixed change: $GATE_REASON." ;;
+            spec_outside_ticket)
+              RESULT="blocked"
+              DETAIL="Spec outside its ticket: $GATE_REASON." ;;
+            spec_change)
+              if [ -f reviews.json ]; then
+                REVIEW=$(jq -r 'map("\(.key): \(.verdict), scope \(.scope_change)" + (if (.issues | length) > 0 then " (" + (.issues | join("; ")) + ")" else "" end)) | join(" | ")' reviews.json)
+              else
+                REVIEW="not run"
+              fi
+              if [ -n "$STRUCTURE_PROBLEMS" ]; then
+                RESULT="blocked"
+                DETAIL="Spec structure: $STRUCTURE_PROBLEMS."
+              elif [ "$SPEC_QUALITY_MODE" = "blocking" ] && jq -e 'any(.[]; .verdict == "needs_work")' reviews.json > /dev/null; then
+                RESULT="blocked"
+                DETAIL="Spec review, blocking mode: $REVIEW."
+              elif [ "$SPEC_APPROVED" != "true" ]; then
+                RESULT="blocked"
+                DETAIL="Awaiting spec approval: the spec owner reads this review and adds the spec-approved label. Review ($SPEC_QUALITY_MODE): $REVIEW."
+              else
+                RESULT="pass"
+                DETAIL="Spec change approved; merge it before any code PR for this ticket. Review ($SPEC_QUALITY_MODE): $REVIEW."
+              fi ;;
             *)
               RESULT="blocked"
               DETAIL="The check has no rule yet for gate $GATE, so it blocks by default" ;;              

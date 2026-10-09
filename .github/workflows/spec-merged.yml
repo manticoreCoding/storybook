@@ -1,0 +1,68 @@
+name: Spec merged
+
+on:
+  pull_request:
+    types: [closed]
+    paths: ['specs/**']
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  promote:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    env:
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+      PR_URL: ${{ github.event.pull_request.html_url }}
+      SPEC_APPROVED: ${{ contains(github.event.pull_request.labels.*.name, 'spec-approved') }}
+      JIRA_BASE_URL: ${{ vars.JIRA_BASE_URL }}
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - name: Move Idea tickets to To Do when their spec merges
+        env:
+          JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+        run: |
+          FROM_STATUS="Idea"
+          TO_STATUS="To Do"
+          if [ -z "$JIRA_BASE_URL" ]; then echo "::error::JIRA_BASE_URL is empty"; exit 1; fi
+          gh pr diff "$PR_NUMBER" --name-only > changed_files.txt
+          OTHER=$(grep -vc '^specs/' changed_files.txt || true)
+          if [ "$OTHER" -gt 0 ] || [ "$SPEC_APPROVED" != "true" ]; then
+            PROMOTE=false
+            echo "::warning::Merged without passing the spec lane (other files: $OTHER, spec-approved: $SPEC_APPROVED). No ticket is promoted."
+          else
+            PROMOTE=true
+          fi
+          for KEY in $(grep -E '^specs/[^/]+/' changed_files.txt | cut -d/ -f2 | sort -u); do
+            curl --silent --show-error --fail-with-body --user "$JIRA_EMAIL:$JIRA_API_TOKEN" \
+              --header "Accept: application/json" \
+              "$JIRA_BASE_URL/rest/api/3/issue/$KEY?fields=status" > issue.json
+            STATUS=$(jq -r '.fields.status.name' issue.json)
+            if [ "$PROMOTE" != "true" ]; then
+              MSG="Spec PR #$PR_NUMBER ($PR_URL) was merged without passing the spec lane (other files: $OTHER, spec-approved: $SPEC_APPROVED). Status left at $STATUS; a person should review."
+            elif [ "$(echo "$STATUS" | tr '[:upper:]' '[:lower:]')" != "$(echo "$FROM_STATUS" | tr '[:upper:]' '[:lower:]')" ]; then
+              MSG="Spec for $KEY merged in PR #$PR_NUMBER ($PR_URL). Status left at $STATUS: only $FROM_STATUS tickets are promoted."
+            else
+              curl --silent --show-error --fail-with-body --user "$JIRA_EMAIL:$JIRA_API_TOKEN" \
+                --header "Accept: application/json" \
+                "$JIRA_BASE_URL/rest/api/3/issue/$KEY/transitions" > transitions.json
+              TID=$(jq -r --arg to "$TO_STATUS" '[.transitions[] | select((.to.name | ascii_downcase) == ($to | ascii_downcase)) | .id] | first // empty' transitions.json)
+              if [ -z "$TID" ]; then
+                echo "::error::$KEY has no transition from $STATUS to $TO_STATUS. Available:"; jq -r '.transitions[].to.name' transitions.json; exit 1
+              fi
+              jq -n --arg id "$TID" '{transition: {id: $id}}' \
+                | curl --silent --show-error --fail-with-body --user "$JIRA_EMAIL:$JIRA_API_TOKEN" \
+                    --header "Content-Type: application/json" --data @- \
+                    "$JIRA_BASE_URL/rest/api/3/issue/$KEY/transitions" > /dev/null
+              MSG="Spec for $KEY approved and merged in PR #$PR_NUMBER ($PR_URL). Status moved $STATUS -> $TO_STATUS by the spec change check."
+            fi
+            echo "$MSG"
+            jq -n --arg b "$MSG" '{body: $b}' \
+              | curl --silent --show-error --fail-with-body --user "$JIRA_EMAIL:$JIRA_API_TOKEN" \
+                  --header "Content-Type: application/json" --data @- \
+                  "$JIRA_BASE_URL/rest/api/2/issue/$KEY/comment" > /dev/null
+          done
