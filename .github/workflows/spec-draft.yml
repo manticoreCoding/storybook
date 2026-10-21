@@ -76,7 +76,7 @@ jobs:
           fi
           if gh api "repos/$GH_REPO/branches/$TICKET_KEY-spec" > /dev/null 2> err.txt; then
             echo "branch $TICKET_KEY-spec already exists (an open or earlier spec PR); delete it to redraft" >> refusals.txt
-          elif ! grep -q "Not Found" err.txt; then
+          elif ! grep -q "(HTTP 404)" err.txt; then
             echo "::error::Could not check for an existing branch"; cat err.txt; exit 1
           fi
           REFUSE=$(jq -R -s -r 'split("\n") | map(select(length > 0)) | join("; ")' refusals.txt)
