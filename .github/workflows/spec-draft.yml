@@ -1,0 +1,53 @@
+name: Spec draft
+
+on:
+  workflow_dispatch:
+    inputs:
+      key:
+        description: "Jira key of an Idea ticket, e.g. KAN-21"
+        required: true
+  repository_dispatch:
+    types: [draft-spec]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: spec-draft-${{ github.event.client_payload.key || inputs.key }}
+  cancel-in-progress: false
+
+jobs:
+  draft:
+    runs-on: ubuntu-latest
+    env:
+      TICKET_KEY: ${{ github.event.client_payload.key || inputs.key }}
+      JIRA_BASE_URL: ${{ vars.JIRA_BASE_URL }}
+      JIRA_PROJECT: ${{ vars.JIRA_PROJECT }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - name: Check the key
+        run: |
+          if [ -z "$JIRA_PROJECT" ] || [ -z "$JIRA_BASE_URL" ]; then
+            echo "::error::JIRA_PROJECT or JIRA_BASE_URL is empty. Add both under Settings > Secrets and variables > Actions > Variables."
+            exit 1
+          fi
+          if [[ ! "$TICKET_KEY" =~ ^${JIRA_PROJECT}-[0-9]+$ ]]; then
+            echo "::error::Not a $JIRA_PROJECT key: $(printf '%q' "$TICKET_KEY")"
+            exit 1
+          fi
+          echo "Ticket: $TICKET_KEY"
+
+      - name: Mint the spec bot's token
+        id: bot
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.SPEC_BOT_CLIENT_ID }}
+          private-key: ${{ secrets.SPEC_BOT_PRIVATE_KEY }}
+
+      - name: Show what the bot can reach
+        env:
+          GH_TOKEN: ${{ steps.bot.outputs.token }}
+        run: |
+          echo "Repositories the bot's token reaches:"
+          gh api /installation/repositories --jq '.repositories[].full_name'
+          echo "Is main protected? $(gh api "repos/$GH_REPO/branches/main" --jq '.protected')"
