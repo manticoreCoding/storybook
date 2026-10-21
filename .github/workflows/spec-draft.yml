@@ -50,6 +50,8 @@ jobs:
         run: |
           echo "Repositories the bot's token reaches:"
           gh api /installation/repositories --jq '.repositories[].full_name'
+          echo "Is main protected? $(gh api "repos/$GH_REPO/branches/main" --jq '.protected')"
+
 
 
       - name: May this ticket be drafted? (rules, no model)
@@ -145,4 +147,3 @@ jobs:
             + "\n\n## Out of scope\n"
             + (.out_of_scope | map("- " + .) | join("\n"))' draft.json > spec.md
           cat spec.md
-          echo "Is main protected? $(gh api "repos/$GH_REPO/branches/main" --jq '.protected')"
