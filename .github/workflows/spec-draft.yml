@@ -50,4 +50,38 @@ jobs:
         run: |
           echo "Repositories the bot's token reaches:"
           gh api /installation/repositories --jq '.repositories[].full_name'
+
+
+      - name: May this ticket be drafted? (rules, no model)
+        env:
+          JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          HTTP=$(curl --silent --show-error --output ticket.json --write-out "%{http_code}" \
+            --user "$JIRA_EMAIL:$JIRA_API_TOKEN" --header "Accept: application/json" \
+            "$JIRA_BASE_URL/rest/api/2/issue/$TICKET_KEY?fields=summary,status,labels,description")
+          if [ "$HTTP" = "404" ]; then echo "::error::$TICKET_KEY was not found in Jira"; exit 1; fi
+          if [ "$HTTP" != "200" ]; then echo "::error::Jira returned $HTTP"; cat ticket.json; exit 1; fi
+          STATUS=$(jq -r '.fields.status.name' ticket.json)
+          : > refusals.txt
+          [ "$(echo "$STATUS" | tr '[:upper:]' '[:lower:]')" = "idea" ] \
+            || echo "status is $STATUS; only Idea tickets are drafted" >> refusals.txt
+          jq -e '.fields.labels | index("draft-spec")' ticket.json > /dev/null \
+            || echo "no draft-spec label on the ticket" >> refusals.txt
+          if gh api "repos/$GH_REPO/contents/specs/$TICKET_KEY/spec.md?ref=main" > /dev/null 2> err.txt; then
+            echo "specs/$TICKET_KEY/spec.md already exists on main; the drafter writes new specs only" >> refusals.txt
+          elif ! grep -q "Not Found" err.txt; then
+            echo "::error::Could not check for an existing spec"; cat err.txt; exit 1
+          fi
+          if gh api "repos/$GH_REPO/branches/$TICKET_KEY-spec" > /dev/null 2> err.txt; then
+            echo "branch $TICKET_KEY-spec already exists (an open or earlier spec PR); delete it to redraft" >> refusals.txt
+          elif ! grep -q "Not Found" err.txt; then
+            echo "::error::Could not check for an existing branch"; cat err.txt; exit 1
+          fi
+          REFUSE=$(jq -R -s -r 'split("\n") | map(select(length > 0)) | join("; ")' refusals.txt)
+          echo "Status: $STATUS"
+          echo "Summary: $(jq -r '.fields.summary' ticket.json)"
+          echo "Refused: ${REFUSE:-no}"
+          echo "REFUSE=$REFUSE" >> "$GITHUB_ENV"
           echo "Is main protected? $(gh api "repos/$GH_REPO/branches/main" --jq '.protected')"
