@@ -147,3 +147,44 @@ jobs:
             + "\n\n## Out of scope\n"
             + (.out_of_scope | map("- " + .) | join("\n"))' draft.json > spec.md
           cat spec.md
+
+
+      - name: Open the spec PR as the bot
+        if: env.REFUSE == '' && env.NOT_DRAFTABLE != 'true'
+        env:
+          GH_TOKEN: ${{ steps.bot.outputs.token }}
+        run: |
+          BRANCH="$TICKET_KEY-spec"
+          BASE_SHA=$(gh api "repos/$GH_REPO/git/ref/heads/main" --jq '.object.sha')
+          gh api "repos/$GH_REPO/git/refs" -f ref="refs/heads/$BRANCH" -f sha="$BASE_SHA" > /dev/null
+          gh api -X PUT "repos/$GH_REPO/contents/specs/$TICKET_KEY/spec.md" \
+            -f message="$TICKET_KEY: draft spec from the Jira ticket" \
+            -f content="$(base64 -w0 spec.md)" -f branch="$BRANCH" > /dev/null
+          {
+            echo "Drafted by the spec bot from $TICKET_KEY. Before adding spec-approved, read it against the ticket."
+            echo
+            echo "**Open questions for the spec owner:**"
+            jq -r '.open_questions | if length == 0 then "- none" else map("- " + .) | join("\n") end' draft.json
+          } > pr_body.md
+          PR_URL=$(gh pr create --head "$BRANCH" --base main \
+            --title "$TICKET_KEY: spec - $(jq -r '.fields.summary' ticket.json)" --body-file pr_body.md)
+          echo "Opened $PR_URL"
+          echo "PR_URL=$PR_URL" >> "$GITHUB_ENV"
+
+      - name: Record the outcome on the ticket
+        env:
+          JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+        run: |
+          if [ -n "$REFUSE" ]; then
+            MSG="Spec bot did not draft $TICKET_KEY: $REFUSE."
+          elif [ "$NOT_DRAFTABLE" = "true" ]; then
+            MSG="Spec bot could not draft $TICKET_KEY without guessing. Questions for the ticket owner: $(jq -r '.open_questions | join(" | ")' draft.json)"
+          else
+            MSG="Spec bot drafted specs/$TICKET_KEY/spec.md and opened $PR_URL. A person must review it against this ticket and add spec-approved before it merges."
+          fi
+          echo "$MSG"
+          jq -n --arg b "$MSG" '{body: $b}' \
+            | curl --silent --show-error --fail-with-body --user "$JIRA_EMAIL:$JIRA_API_TOKEN" \
+                --header "Content-Type: application/json" --data @- \
+                "$JIRA_BASE_URL/rest/api/2/issue/$TICKET_KEY/comment" > /dev/null
