@@ -1,0 +1,83 @@
+name: PR type
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: "PR number, or 'all' to relabel every merged PR"
+        required: true
+        default: all
+
+permissions:
+  contents: read
+  pull-requests: read
+  issues: write
+
+concurrency:
+  group: pr-type-${{ github.event.pull_request.number || 'backfill' }}
+  cancel-in-progress: true
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      JIRA_BASE_URL: ${{ vars.JIRA_BASE_URL }}
+      JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+      JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+      PR_INPUT: ${{ github.event.pull_request.number || inputs.pr }}
+    steps:
+      - name: Make sure the type labels exist
+        run: |
+          for t in feature bugfix maintenance test docs spec mixed; do
+            gh label create "type:$t" --color BFD4F2 --description "Set by pr-type.yml" --force > /dev/null
+          done
+
+      - name: Classify and label
+        run: |
+          if [ "$PR_INPUT" = "all" ]; then
+            PRS=$(gh pr list --state merged --limit 500 --json number --jq '.[].number')
+          else
+            PRS="$PR_INPUT"
+          fi
+
+          for N in $PRS; do
+            FILES=$(gh pr view "$N" --json files --jq '.files[].path')
+            HEAD=$(gh pr view "$N" --json headRefName,title --jq '.headRefName + " " + .title')
+            KEY=$(echo "$HEAD" | grep -oE '[A-Z][A-Z0-9]+-[0-9]+' | head -n1 || true)
+
+            ITYPE=""
+            if [ -n "$KEY" ]; then
+              ITYPE=$(curl -s --fail -u "$JIRA_EMAIL:$JIRA_API_TOKEN" \
+                "$JIRA_BASE_URL/rest/api/3/issue/$KEY?fields=issuetype" \
+                | jq -r '.fields.issuetype.name // ""') || ITYPE=""
+            fi
+
+            if [ -z "$FILES" ]; then
+              TYPE="feature"
+            else
+              SPEC=$(echo "$FILES" | grep -cE '^specs/' || true)
+              OTHER=$(echo "$FILES" | grep -vcE '^specs/' || true)
+              if [ "$SPEC" -gt 0 ] && [ "$OTHER" -gt 0 ]; then TYPE="mixed"
+              elif [ "$SPEC" -gt 0 ]; then TYPE="spec"
+              elif [ "$ITYPE" = "Bug" ]; then TYPE="bugfix"
+              elif ! echo "$FILES" | grep -qvE '(^|/)(tests?|__tests__)/|\.test\.'; then TYPE="test"
+              elif ! echo "$FILES" | grep -qvE '\.md$|^docs/'; then TYPE="docs"
+              elif ! echo "$FILES" | grep -qvE '^\.github/|^package(-lock)?\.json$|^(yarn\.lock|pnpm-lock\.yaml)$|^\.[^/]+$'; then TYPE="maintenance"
+              else TYPE="feature"
+              fi
+            fi
+
+            CURRENT=$(gh pr view "$N" --json labels --jq '[.labels[].name | select(startswith("type:"))] | .[]')
+            for L in $CURRENT; do
+              if [ "$L" != "type:$TYPE" ]; then
+                gh api -X DELETE "repos/$GH_REPO/issues/$N/labels/$L" > /dev/null
+              fi
+            done
+            gh api -X POST "repos/$GH_REPO/issues/$N/labels" -f "labels[]=type:$TYPE" > /dev/null
+
+            echo "PR #$N  ticket=${KEY:-none}  jira_type=${ITYPE:-none}  files=$(echo "$FILES" | grep -c . || true)  ->  type:$TYPE"
+          done
