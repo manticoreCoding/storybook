@@ -4,7 +4,7 @@
 Track the latest version and release date of the storybook app by automatically saving this information to Notion for central visibility.
 
 ## Acceptance criteria
-- Triggering the version tracking action sends the current app version string and release date to the designated Notion database.
+- Triggering the version tracking action reads the version string from the app's `package.json` `version` field and sends it, along with the current release date, to the designated Notion database.
 - The Notion database entry includes distinct properties for both the app version and the release date.
 - If the Notion API request fails, an error is logged in the application console.
 
