@@ -12,8 +12,8 @@ on:
 
 permissions:
   contents: read
-  pull-requests: read
-  issues: write
+  pull-requests: write   # applying a label to a PR counts as writing to the PR
+  issues: write          # creating the type: labels in the repo
 
 concurrency:
   group: pr-type-${{ github.event.pull_request.number || 'backfill' }}
@@ -32,7 +32,7 @@ jobs:
     steps:
       - name: Make sure the type labels exist
         run: |
-          for t in feature bugfix maintenance test docs spec mixed; do
+          for t in feature bugfix maintenance test docs spec mixed content; do
             gh label create "type:$t" --color BFD4F2 --description "Set by pr-type.yml" --force > /dev/null
           done
 
@@ -52,7 +52,7 @@ jobs:
             ITYPE=""
             if [ -n "$KEY" ]; then
               ITYPE=$(curl -s --fail -u "$JIRA_EMAIL:$JIRA_API_TOKEN" \
-                "$JIRA_BASE_URL/rest/api/3/issue/$KEY?fields=issuetype" \
+                "${JIRA_BASE_URL%/}/rest/api/3/issue/$KEY?fields=issuetype" \
                 | jq -r '.fields.issuetype.name // ""') || ITYPE=""
             fi
 
@@ -66,7 +66,8 @@ jobs:
               elif [ "$ITYPE" = "Bug" ]; then TYPE="bugfix"
               elif ! echo "$FILES" | grep -qvE '(^|/)(tests?|__tests__)/|\.test\.'; then TYPE="test"
               elif ! echo "$FILES" | grep -qvE '\.md$|^docs/'; then TYPE="docs"
-              elif ! echo "$FILES" | grep -qvE '^\.github/|^package(-lock)?\.json$|^(yarn\.lock|pnpm-lock\.yaml)$|^\.[^/]+$'; then TYPE="maintenance"
+              elif ! echo "$FILES" | grep -qvE '^\.|^package(-lock)?\.json$|^(yarn\.lock|pnpm-lock\.yaml)$|^[^/]+\.config\.(js|mjs|cjs|ts)$|^jsconfig\.json$'; then TYPE="maintenance"
+              elif ! echo "$FILES" | grep -qvE '^data/stories/'; then TYPE="content"
               else TYPE="feature"
               fi
             fi
