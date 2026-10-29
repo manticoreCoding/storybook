@@ -4,20 +4,18 @@ on:
   release:
     types: [published]
   workflow_dispatch:
-    inputs:
-      version_tag:
-        description: 'Manual Version Tag'
-        required: true
-        default: 'v1.0.0'
 
 jobs:
   deploy-and-notify:
     runs-on: ubuntu-latest
-    env:
-      VERSION_TAG: ${{ github.event.inputs.version_tag || github.ref_name }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v7
+
+      - name: Read version from package.json
+        run: |
+          VERSION_TAG=$(jq -r '.version' package.json)
+          echo "VERSION_TAG=$VERSION_TAG" >> "$GITHUB_ENV"
 
       - name: Simulate Deployment Step
         run: |
