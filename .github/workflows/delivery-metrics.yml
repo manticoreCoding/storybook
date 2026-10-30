@@ -1,0 +1,42 @@
+name: Delivery metrics
+
+on:
+  workflow_dispatch:
+    inputs:
+      write:
+        description: "Write to Notion (leave unticked for a dry run)"
+        type: boolean
+        default: false
+      note:
+        description: "Note saved on the snapshot, e.g. baseline"
+        required: false
+        default: ""
+  schedule:
+    - cron: "17 13 * * 1"   # Mondays, 13:17 UTC (morning in Toronto)
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: delivery-metrics
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Collect and record
+        env:
+          JIRA_BASE_URL: ${{ vars.JIRA_BASE_URL }}
+          JIRA_PROJECT: ${{ vars.JIRA_PROJECT }}
+          JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+          NOTION_TOKEN: ${{ secrets.NOTION_METRICS_TOKEN }}
+          NOTION_TICKETS_DB: ${{ vars.NOTION_TICKETS_DB }}
+          NOTION_SNAPSHOTS_DB: ${{ vars.NOTION_SNAPSHOTS_DB }}
+          GH_TOKEN: ${{ github.token }}
+          WRITE_TO_NOTION: ${{ github.event_name == 'schedule' || inputs.write }}
+          SNAPSHOT_NOTE: ${{ inputs.note }}
+        run: python3 scripts/delivery_metrics.py
