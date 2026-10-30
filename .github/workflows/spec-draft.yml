@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       TICKET_KEY: ${{ github.event.client_payload.key || inputs.key }}
-      JIRA_BASE_URL: ${{ vars.JIRA_BASE_URL }}
+      JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
       JIRA_PROJECT: ${{ vars.JIRA_PROJECT }}
       GH_REPO: ${{ github.repository }}
     steps:

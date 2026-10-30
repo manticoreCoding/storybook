@@ -16,7 +16,7 @@ jobs:
       PR_TITLE: ${{ github.event.pull_request.title }}
       PR_BODY: ${{ github.event.pull_request.body }}
       PR_BRANCH: ${{ github.head_ref }}
-      JIRA_BASE_URL: ${{ vars.JIRA_BASE_URL }}
+      JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
       JIRA_PROJECT: ${{ vars.JIRA_PROJECT }}
       GH_TOKEN: ${{ github.token }}
       GH_REPO: ${{ github.repository }}

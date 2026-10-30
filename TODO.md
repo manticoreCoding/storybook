@@ -12,7 +12,7 @@ can edit or delete it. Nothing else on this list matters until this exists.
 - [x] Add a `userId`/owner field to the story schema (`ownerId` + `editorIds`)
 - [x] Scope `getAllStories`/`getStory`/`saveStory`/`deleteStory` (lib/stories.js) to the current user
 - [x] Gate `/admin` and `/admin/edit/[id]` behind login
-- [x] Decide what happens to the two existing seed stories — assigned to the owner's account in local dev data
+- [x] Decide what happens to the two existing seed stories — assigned to my account in local dev data
 - [x] Clerk deployed to production (the production site) and all 4 pre-existing stories in the production Vercel Blob store (`dragon-park`, `magic-snowman`, `stella-s-drawings`, `the-little-cloud`) backfilled with `ownerId` on 2026-07-10
 
 ## 2. Real database for story metadata
