@@ -29,7 +29,7 @@ TICKETS_DB = os.environ.get("NOTION_TICKETS_DB", "")
 SNAPSHOTS_DB = os.environ.get("NOTION_SNAPSHOTS_DB", "")
 
 # Status names in the KAN workflow, compared in lower case.
-IDEA, TODO, DONE = "idea", "to do", "done"
+IDEA, TODO, DONE, CANCELLED = "idea", "to do", "done", "cancelled"
 BUG = "bug"   # Jira issue type for defects; bug tickets get their own medians
 WORK_TYPES = {"feature", "story", "task"}   # Epics span many tickets, Subtasks double-count their parent
 TYPES = ["feature", "bugfix", "maintenance", "test", "docs", "spec", "mixed", "content", "untyped"]
@@ -119,12 +119,18 @@ def ticket(issue):
     done_moves = [t for t, _, to in changes if to == DONE]
     done_at = done_moves[-1] if done_moves and status.lower() == DONE else None  # last Done, only if still Done
     reopened = sum(1 for _, frm, to in changes if frm == DONE and to != DONE)
+    spec_phase = initial == IDEA and todo_at is not None   # status only: created in Idea, then reached To Do
+    cancel_moves = [(t, frm) for t, frm, to in changes if to == CANCELLED]
+    cancelled_at, cancelled_from = cancel_moves[-1] if cancel_moves and status.lower() == CANCELLED else (None, None)
     return {
         "key": issue["key"], "summary": f.get("summary") or "", "type": f["issuetype"]["name"],
         "status": status, "created": created, "todo_at": todo_at, "done_at": done_at,
-        "spec_days": days(created, todo_at) if initial == IDEA else None,  # no spec phase if it skipped Idea
+        "spec_days": days(created, todo_at) if spec_phase else None,       # no spec time if Idea was skipped
         "delivery_days": days(todo_at, done_at),
         "total_days": days(created, done_at), "reopened": reopened,
+        "cancelled_at": cancelled_at, "cancelled_from": cancelled_from,
+        "wasted_spec_days": days(created, todo_at) if cancelled_at and spec_phase else None,       # spec finished, then thrown away
+        "wasted_delivery_days": days(todo_at, cancelled_at) if cancelled_at else None,             # work after To Do, then thrown away
     }
 
 
@@ -175,6 +181,7 @@ def upsert_ticket(t):
         "To Do at": p_date(t["todo_at"]), "Done at": p_date(t["done_at"]),
         "Spec days": p_num(t["spec_days"]), "Delivery days": p_num(t["delivery_days"]),
         "Total days": p_num(t["total_days"]), "Reopened": p_num(t["reopened"]),
+        "Cancelled at": p_date(t["cancelled_at"]),
         "Synced": p_date(NOW),
     }
     found = notion("POST", f"databases/{TICKETS_DB}/query",
@@ -195,6 +202,9 @@ def add_snapshot(s, mix):
         "Bugs done": p_num(s["bugs_done"]), "Median bug delivery days": p_num(s["bug_delivery"]),
         "Median bug total days": p_num(s["bug_total"]),
         "Merged PRs": p_num(sum(mix.values())), "Note": p_text(NOTE),
+        "Cancelled tickets": p_num(s["cancelled"]), "Cancelled after spec": p_num(s["cancelled_after_spec"]),
+        "Cancelled spec days": p_num(s["wasted_spec"]), "Cancelled delivery days": p_num(s["wasted_delivery"]),
+        "Done without To Do": p_num(s["skipped"]),
     }
     for t in TYPES:
         props[f"{t.capitalize()} PRs"] = p_num(mix[t])
@@ -207,9 +217,12 @@ def main():
     for pr in merged_prs():
         mix[pr_type(pr)] += 1
 
-    work = [t for t in tickets if t["type"].lower() in WORK_TYPES]
-    bugs = [t for t in tickets if t["type"].lower() == BUG]
-    excluded = len(tickets) - len(work) - len(bugs)
+    cancelled = [t for t in tickets if t["cancelled_at"]]
+    skipped = [t for t in tickets if t["done_at"] and not t["todo_at"]]   # Idea straight to Done: no stage history
+    live = [t for t in tickets if not t["cancelled_at"] and t not in skipped]   # cancelled work is measured as waste, not cycle time
+    work = [t for t in live if t["type"].lower() in WORK_TYPES]
+    bugs = [t for t in live if t["type"].lower() == BUG]
+    excluded = len(live) - len(work) - len(bugs)
     s = {
         "done": sum(1 for t in work if t["done_at"]),
         "spec": median(t["spec_days"] for t in work),
@@ -218,6 +231,11 @@ def main():
         "bugs_done": sum(1 for t in bugs if t["done_at"]),
         "bug_delivery": median(t["delivery_days"] for t in bugs),
         "bug_total": median(t["total_days"] for t in bugs),
+        "skipped": len(skipped),
+        "cancelled": len(cancelled),
+        "cancelled_after_spec": sum(1 for t in cancelled if t["todo_at"]),
+        "wasted_spec": round(sum(t["wasted_spec_days"] or 0 for t in cancelled), 1),
+        "wasted_delivery": round(sum(t["wasted_delivery_days"] or 0 for t in cancelled), 1),
     }
 
     out = ["| Ticket | Type | Status | Spec days | Delivery days | Total days | Reopened |",
@@ -230,6 +248,11 @@ def main():
             "", f'**Bugs done:** {s["bugs_done"]} of {len(bugs)}. '
                 f'**Median days**: delivery {s["bug_delivery"]}, total {s["bug_total"]}.',
             "", f"**Left out of the medians:** {excluded} (Epics, Subtasks and any other type).",
+            "", f'**Done without going through To Do:** {s["skipped"]} (left out of the medians). '
+                + "Tickets: " + (", ".join(t["key"] for t in skipped) or "none") + ".",
+            "", f'**Cancelled:** {s["cancelled"]} ({s["cancelled_after_spec"]} after the spec was done). '
+                f'**Days spent before cancelling**: spec {s["wasted_spec"]}, delivery {s["wasted_delivery"]}. '
+                + "From: " + (", ".join(f'{t["key"]} {t["cancelled_from"]}' for t in cancelled) or "none") + ".",
             "", "**Merged PRs by type:** " + ", ".join(f"{k} {v}" for k, v in mix.items())]
     report = "\n".join(out)
     print(report)
