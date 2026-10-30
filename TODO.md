@@ -13,7 +13,7 @@ can edit or delete it. Nothing else on this list matters until this exists.
 - [x] Scope `getAllStories`/`getStory`/`saveStory`/`deleteStory` (lib/stories.js) to the current user
 - [x] Gate `/admin` and `/admin/edit/[id]` behind login
 - [x] Decide what happens to the two existing seed stories — assigned to my account in local dev data
-- [x] Clerk deployed to production (the production site) and all 4 pre-existing stories in the production Vercel Blob store (`dragon-park`, `magic-snowman`, `stella-s-drawings`, `the-little-cloud`) backfilled with `ownerId` on 2026-07-10
+- [x] Clerk deployed to production and all 4 pre-existing stories in the production Vercel Blob store (`dragon-park`, `magic-snowman`, `stella-s-drawings`, `the-little-cloud`) backfilled with `ownerId` on 2026-07-10
 
 ## 2. Real database for story metadata
 `getAllStories()` currently does a Blob `list()` + fetch-per-blob on every
