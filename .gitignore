@@ -43,3 +43,6 @@ next-env.d.ts
 .vercel
 .env*
 data/views/
+
+# Lesson plan working copies (kept out of the public repo and out of sync services)
+lessons-wip/
