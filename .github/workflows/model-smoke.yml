@@ -24,8 +24,9 @@ jobs:
         uses: ./.github/actions/model-call
         with:
           purpose: smoke-review
-          provider: github
+          provider: openai
           model: ${{ vars.REVIEW_MODEL }}
+          openai-key: ${{ secrets.OPENAI_API_KEY }}
           prompt-file: .github/prompts/smoke.md
           input-file: smoke_input.txt
           shape: '.ok == true'
