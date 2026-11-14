@@ -1,0 +1,35 @@
+name: Model call
+description: One gateway for every model call - provider, model, versioned prompt, retries, guardrails, usage log.
+inputs:
+  purpose:          { description: "What the call is for, e.g. spec-review", required: true }
+  provider:         { description: "gemini or github", required: true }
+  model:            { description: "Model id for that provider", required: true }
+  prompt-file:      { description: "System prompt, from the trusted checkout", required: true }
+  input-file:       { description: "File holding the user message", required: true }
+  shape:            { description: "jq expression the answer must satisfy", required: true }
+  max-input-chars:  { description: "Refuse larger inputs", required: false, default: "24000" }
+  api-key:          { description: "Gemini key (unused for github)", required: false, default: "" }
+  output-file:      { description: "Where the answer JSON goes", required: false, default: "model_output.json" }
+outputs:
+  prompt-sha:
+    description: First 12 characters of the prompt's sha256
+    value: ${{ steps.call.outputs.prompt_sha }}
+runs:
+  using: composite
+  steps:
+    - id: call
+      shell: bash
+      env:
+        PURPOSE: ${{ inputs.purpose }}
+        PROVIDER: ${{ inputs.provider }}
+        MODEL: ${{ inputs.model }}
+        PROMPT_FILE: ${{ inputs.prompt-file }}
+        INPUT_FILE: ${{ inputs.input-file }}
+        SHAPE: ${{ inputs.shape }}
+        MAX_CHARS: ${{ inputs.max-input-chars }}
+        OUT: ${{ inputs.output-file }}
+        GEMINI_KEY: ${{ inputs.api-key }}
+        GH_MODELS_TOKEN: ${{ github.token }}
+      run: |
+        bash "$GITHUB_ACTION_PATH/call.sh"
+        echo "prompt_sha=$(jq -r .prompt_sha "$OUT.meta.json")" >> "$GITHUB_OUTPUT"
