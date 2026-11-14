@@ -26,6 +26,9 @@ jobs:
       JIRA_PROJECT: ${{ vars.JIRA_PROJECT }}
       GH_TOKEN: ${{ github.token }}
       GH_REPO: ${{ github.repository }}
+      GATE: ""
+      STRUCTURE_PROBLEMS: ""
+
     steps:
       - name: Describe the change
         run: |
