@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
 # .github/actions/model-call/call.sh - the only way storybook calls a model.
 # Reads: PURPOSE PROVIDER MODEL PROMPT_FILE INPUT_FILE SHAPE OUT
-#        MAX_CHARS (default 24000) GEMINI_KEY GH_MODELS_TOKEN
+#        MAX_CHARS (default 24000) GEMINI_KEY GH_MODELS_TOKEN OPENAI_KEY
 # Writes: $OUT (the answer) and $OUT.meta.json (provider, model, prompt hash, tokens)
 set -euo pipefail
 MAX_CHARS=${MAX_CHARS:-24000}
 case "$PROVIDER" in
   gemini) URL=https://generativelanguage.googleapis.com/v1beta/openai/chat/completions; KEY=${GEMINI_KEY:-} ;;
   github) URL=https://models.github.ai/inference/chat/completions; KEY=${GH_MODELS_TOKEN:-} ;;
-  *) echo "::error::Unknown provider '$PROVIDER' (use gemini or github)"; exit 1 ;;
+  openai)  URL=https://api.openai.com/v1/chat/completions; KEY=${OPENAI_KEY:-} ;;
+  *) echo "::error::Unknown provider '$PROVIDER' (use gemini, openai or github)"; exit 1 ;;
 esac
 [ -n "$MODEL" ] || { echo "::error::$PURPOSE: no model set"; exit 1; }
 [ -n "$KEY" ]   || { echo "::error::$PURPOSE: no credential for $PROVIDER"; exit 1; }
