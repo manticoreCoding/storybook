@@ -2,13 +2,14 @@ name: Model call
 description: One gateway for every model call - provider, model, versioned prompt, retries, guardrails, usage log.
 inputs:
   purpose:          { description: "What the call is for, e.g. spec-review", required: true }
-  provider:         { description: "gemini or github", required: true }
+  provider:         { description: "gemini or openai", required: true }
   model:            { description: "Model id for that provider", required: true }
   prompt-file:      { description: "System prompt, from the trusted checkout", required: true }
   input-file:       { description: "File holding the user message", required: true }
   shape:            { description: "jq expression the answer must satisfy", required: true }
   max-input-chars:  { description: "Refuse larger inputs", required: false, default: "24000" }
   api-key:          { description: "Gemini key (unused for github)", required: false, default: "" }
+  openai-key:       { description: "OpenAI key (only for provider openai)", required: false, default: "" }  
   output-file:      { description: "Where the answer JSON goes", required: false, default: "model_output.json" }
 outputs:
   prompt-sha:
@@ -29,6 +30,7 @@ runs:
         MAX_CHARS: ${{ inputs.max-input-chars }}
         OUT: ${{ inputs.output-file }}
         GEMINI_KEY: ${{ inputs.api-key }}
+        OPENAI_KEY: ${{ inputs.openai-key }}
         GH_MODELS_TOKEN: ${{ github.token }}
       run: |
         bash "$GITHUB_ACTION_PATH/call.sh"
