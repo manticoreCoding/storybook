@@ -1,5 +1,5 @@
-# Who owns which paths. With branch protection set to "Require review from Code Owners",
-# GitHub would demand their approval before merge. In this lesson it records intent;
-# the spec-approved label stands in for the review.
+# Who owns which paths. With ruleset main-protection,
+# GitHub demands approval before merge.
+# Review is now required, the label no longer stands in for it.
 /specs/    @manticoreCoding
-/.github/  @manticoreCoding
+/.github/  @manticoreCoding                                                                                                                                                                                                                                                                                           
