@@ -3,6 +3,12 @@ name: Change Traceability Agent
 on:
   pull_request:
     types: [opened, reopened, edited, labeled, synchronize]
+  pull_request_review:
+    types: [submitted, dismissed]
+  
+concurrency:
+  group: trace-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -15,7 +21,7 @@ jobs:
       PR_NUMBER: ${{ github.event.pull_request.number }}
       PR_TITLE: ${{ github.event.pull_request.title }}
       PR_BODY: ${{ github.event.pull_request.body }}
-      PR_BRANCH: ${{ github.head_ref }}
+      PR_BRANCH: ${{ github.event.pull_request.head.ref }}
       JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
       JIRA_PROJECT: ${{ vars.JIRA_PROJECT }}
       GH_TOKEN: ${{ github.token }}
@@ -79,10 +85,30 @@ jobs:
           done
           jq 'map(del(.spec))' tickets.json
 
+      - name: Read approvals (who approved which commit)
+        env:
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+        run: |
+          OWNERS=$(gh api -H "Accept: application/vnd.github.raw" \
+              "repos/$GH_REPO/contents/.github/CODEOWNERS?ref=$BASE_REF" \
+            | awk '$1 == "/specs/" { for (i = 2; i <= NF; i++) { sub(/^@/, "", $i); print $i } }' \
+            | paste -sd, -)
+          gh api --paginate "repos/$GH_REPO/pulls/$PR_NUMBER/reviews" | jq -s 'add // []' > reviews_raw.json
+          APPROVERS=$(jq -r --arg sha "$HEAD_SHA" --arg author "$AUTHOR" --arg owners "$OWNERS" '
+            map(select(.state != "COMMENTED" and .state != "PENDING"))
+            | group_by(.user.login) | map(max_by(.submitted_at))
+            | map(select(.state == "APPROVED" and .commit_id == $sha and .user.login != $author
+                         and (.user.login | IN($owners | split(",")[]))))
+            | map(.user.login) | join(",")' reviews_raw.json)
+          echo "Spec owners: ${OWNERS:-none} | author: $AUTHOR | approved on ${HEAD_SHA:0:7} by: ${APPROVERS:-nobody}"
+          echo "APPROVERS=$APPROVERS" >> "$GITHUB_ENV"
+          echo "SPEC_APPROVED=$([ -n "$APPROVERS" ] && echo true || echo false)" >> "$GITHUB_ENV"
+
       - name: Ticket gate (rules, no model)
         env:
           EMERGENCY: ${{ contains(github.event.pull_request.labels.*.name, 'emergency-change') }}
-          SPEC_APPROVED: ${{ contains(github.event.pull_request.labels.*.name, 'spec-approved') }}
         run: |
           # Code lane: each cited ticket must exist, be approved work, and have a spec on main
           REASONS=$(jq -r '[.[] | . as $t
@@ -131,7 +157,6 @@ jobs:
           echo "Reason: $REASON"
           echo "GATE=$GATE" >> "$GITHUB_ENV"
           echo "GATE_REASON=$REASON" >> "$GITHUB_ENV"
-          echo "SPEC_APPROVED=$SPEC_APPROVED" >> "$GITHUB_ENV"
 
       - name: Spec structure (rules, no model)
         if: env.GATE == 'spec_change'
@@ -322,10 +347,10 @@ jobs:
                 DETAIL="Spec review, blocking mode: $REVIEW."
               elif [ "$SPEC_APPROVED" != "true" ]; then
                 RESULT="blocked"
-                DETAIL="Awaiting spec approval: the spec owner reads this review and adds the spec-approved label. Review ($SPEC_QUALITY_MODE): $REVIEW."
+                DETAIL="Awaiting approval: a spec owner other than the author must approve this commit in GitHub. The spec-approved label is not read. Review ($SPEC_QUALITY_MODE): $REVIEW."
               else
                 RESULT="pass"
-                DETAIL="Spec change approved; merge it before any code PR for this ticket. Review ($SPEC_QUALITY_MODE): $REVIEW."
+                DETAIL="Spec change approved by $APPROVERS on ${{ github.event.pull_request.head.sha }}; merge it before any code PR for this ticket. Review ($SPEC_QUALITY_MODE): $REVIEW."
               fi ;;
             *)
               RESULT="blocked"

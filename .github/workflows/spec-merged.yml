@@ -16,11 +16,30 @@ jobs:
     env:
       PR_NUMBER: ${{ github.event.pull_request.number }}
       PR_URL: ${{ github.event.pull_request.html_url }}
-      SPEC_APPROVED: ${{ contains(github.event.pull_request.labels.*.name, 'spec-approved') }}
       JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
       GH_TOKEN: ${{ github.token }}
       GH_REPO: ${{ github.repository }}
     steps:
+      - name: Read approvals (who approved which commit)
+        env:
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_REF: main
+        run: |
+          OWNERS=$(gh api -H "Accept: application/vnd.github.raw" \
+              "repos/$GH_REPO/contents/.github/CODEOWNERS?ref=$BASE_REF" \
+            | awk '$1 == "/specs/" { for (i = 2; i <= NF; i++) { sub(/^@/, "", $i); print $i } }' \
+            | paste -sd, -)
+          gh api --paginate "repos/$GH_REPO/pulls/$PR_NUMBER/reviews" | jq -s 'add // []' > reviews_raw.json
+          APPROVERS=$(jq -r --arg sha "$HEAD_SHA" --arg author "$AUTHOR" --arg owners "$OWNERS" '
+            map(select(.state != "COMMENTED" and .state != "PENDING"))
+            | group_by(.user.login) | map(max_by(.submitted_at))
+            | map(select(.state == "APPROVED" and .commit_id == $sha and .user.login != $author
+                         and (.user.login | IN($owners | split(",")[]))))
+            | map(.user.login) | join(",")' reviews_raw.json)
+          echo "Spec owners: ${OWNERS:-none} | author: $AUTHOR | approved on ${HEAD_SHA:0:7} by: ${APPROVERS:-nobody}"
+          echo "APPROVERS=$APPROVERS" >> "$GITHUB_ENV"
+
       - name: Move Idea tickets to To Do when their spec merges
         env:
           JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
@@ -31,9 +50,9 @@ jobs:
           if [ -z "$JIRA_BASE_URL" ]; then echo "::error::JIRA_BASE_URL is empty"; exit 1; fi
           gh pr diff "$PR_NUMBER" --name-only > changed_files.txt
           OTHER=$(grep -vc '^specs/' changed_files.txt || true)
-          if [ "$OTHER" -gt 0 ] || [ "$SPEC_APPROVED" != "true" ]; then
+          if [ "$OTHER" -gt 0 ] || [ -z "$APPROVERS" ]; then
             PROMOTE=false
-            echo "::warning::Merged without passing the spec lane (other files: $OTHER, spec-approved: $SPEC_APPROVED). No ticket is promoted."
+            echo "::warning::Merged without passing the spec lane (other files: $OTHER, approved by: ${APPROVERS:-nobody}). No ticket is promoted."
           else
             PROMOTE=true
           fi
@@ -43,7 +62,7 @@ jobs:
               "$JIRA_BASE_URL/rest/api/3/issue/$KEY?fields=status" > issue.json
             STATUS=$(jq -r '.fields.status.name' issue.json)
             if [ "$PROMOTE" != "true" ]; then
-              MSG="Spec PR #$PR_NUMBER ($PR_URL) was merged without passing the spec lane (other files: $OTHER, spec-approved: $SPEC_APPROVED). Status left at $STATUS; a person should review."
+              MSG="Spec PR #$PR_NUMBER ($PR_URL) was merged without passing the spec lane (other files: $OTHER, approved by: ${APPROVERS:-nobody}). Status left at $STATUS; a person should review."
             elif [ "$(echo "$STATUS" | tr '[:upper:]' '[:lower:]')" != "$(echo "$FROM_STATUS" | tr '[:upper:]' '[:lower:]')" ]; then
               MSG="Spec for $KEY merged in PR #$PR_NUMBER ($PR_URL). Status left at $STATUS: only $FROM_STATUS tickets are promoted."
             else
@@ -58,7 +77,7 @@ jobs:
                 | curl --silent --show-error --fail-with-body --user "$JIRA_EMAIL:$JIRA_API_TOKEN" \
                     --header "Content-Type: application/json" --data @- \
                     "$JIRA_BASE_URL/rest/api/3/issue/$KEY/transitions" > /dev/null
-              MSG="Spec for $KEY approved and merged in PR #$PR_NUMBER ($PR_URL). Status moved $STATUS -> $TO_STATUS by the spec change check."
+              MSG="Spec for $KEY approved by $APPROVERS and merged in PR #$PR_NUMBER ($PR_URL). Status moved $STATUS -> $TO_STATUS by the spec change check."
             fi
             echo "$MSG"
             jq -n --arg b "$MSG" '{body: $b}' \
