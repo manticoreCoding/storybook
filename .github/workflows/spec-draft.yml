@@ -24,6 +24,9 @@ jobs:
       JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
       JIRA_PROJECT: ${{ vars.JIRA_PROJECT }}
       GH_REPO: ${{ github.repository }}
+      REFUSE: ""
+      NOT_DRAFTABLE: ""
+
     steps:
       - name: Check the key
         run: |
