@@ -1,0 +1,31 @@
+name: Model smoke test
+on: workflow_dispatch
+permissions:
+  contents: read
+  models: read
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with: { ref: main, sparse-checkout: .github, persist-credentials: false }
+      - run: echo 'Say ok.' > smoke_input.txt
+      - name: Drafter provider
+        uses: ./.github/actions/model-call
+        with:
+          purpose: smoke-draft
+          provider: gemini
+          model: ${{ vars.DRAFT_MODEL }}
+          api-key: ${{ secrets.LLM_API_KEY }}
+          prompt-file: .github/prompts/smoke.md
+          input-file: smoke_input.txt
+          shape: '.ok == true'
+      - name: Reviewer provider
+        uses: ./.github/actions/model-call
+        with:
+          purpose: smoke-review
+          provider: github
+          model: ${{ vars.REVIEW_MODEL }}
+          prompt-file: .github/prompts/smoke.md
+          input-file: smoke_input.txt
+          shape: '.ok == true'
